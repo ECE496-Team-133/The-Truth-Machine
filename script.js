@@ -55,13 +55,43 @@ async function findAnswerInArticle(scrapedContent, claim) {
   try {
     const response = await client.responses.create({
       model: "gpt-5-nano",
-      input: `Based on the following scraped content from a web page, please print the exact text from the content that verifies or disproves the claim provided. Ensure selected text is concise and only contains relevant info to either prove or disprove the claim. Return a single string of text strictly from the article scraped, and ensure its no more than a couple sentences long.  Claim: "${claim}"\n\nScraped Content:\n${scrapedContent}`,
+      input: `Based on the following scraped content from a web page, please analyze the claim and provide:
+1. A label of either "True" or "False" based on whether the claim is supported by the content
+2. A single contiguous block of text from the article that verifies or disproves the claim
+
+IMPORTANT: The evidence must be a concise, single, unbroken string of text directly copied from the scraped content. Do not combine multiple separate sentences or paragraphs. Find the most relevant and concise single block of text that directly verifies or disproves the claim.
+
+Return your response in this exact JSON format:
+{"label": "True" or "False", "evidence": "single contiguous block of text from the article"}
+
+Claim: "${claim}"
+
+Scraped Content:
+${scrapedContent}`,
     });
 
-    return response.output_text || "No response from GPT";
+    const evidence = response.output_text || "No response from GPT";
+    
+    // Try to parse the JSON response
+    try {
+      const parsed = JSON.parse(evidence);
+      return {
+        label: parsed.label || "False",
+        evidence: parsed.evidence || evidence
+      };
+    } catch (parseError) {
+      // If JSON parsing fails, return the raw response as evidence with default label
+      return {
+        label: "False",
+        evidence: evidence
+      };
+    }
   } catch (error) {
     console.error("Error calling GPT API:", error);
-    return null;
+    return {
+      label: "False",
+      evidence: null
+    };
   }
 }
 
@@ -109,7 +139,15 @@ async function getQueryForWikiArticle(claim) {
 }
 
 (async () => {
-  let query = "Gustavo fring in brba was chilean and his actor was brazilian";
+  // Get query from command line arguments
+  const args = process.argv.slice(2);
+  if (args.length === 0) {
+    console.error("Error: Please provide a query as a command line argument.");
+    console.error("Usage: node script.js \"your query here\"");
+    process.exit(1);
+  }
+  
+  let query = args.join(" ");
 
   let claims = await extractClaimsFromQuery(query);
   console.log("Claims:", claims);
@@ -130,17 +168,18 @@ async function getQueryForWikiArticle(claim) {
       const content = await scrapeWikipediaContent(urls[0]);
 
       if (content) {
-        const gptResponse = await findAnswerInArticle(content, claim);
+        const result = await findAnswerInArticle(content, claim);
 
-        if (gptResponse) {
+        if (result) {
           console.log("\n=== Answer from article ===");
-          console.log(gptResponse);
+          console.log("Label:", result.label);
+          console.log("Evidence:", result.evidence);
         } else {
           console.log("Failed to get response from GPT");
         }
 
         console.log("\n=== LINK TO RESPONSE ===");
-        const encodedText = encodeURIComponent(gptResponse);
+        const encodedText = encodeURIComponent(result?.evidence || "");
         console.log(urls[0] + "#:~:text=" + encodedText);
       } else {
         console.log("Failed to scrape content from the URL");
