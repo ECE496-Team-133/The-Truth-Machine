@@ -27,3 +27,10 @@
   ```
   python -m src.main "Did Ada Lovelace write the first algorithm?"
   ```
+
+5. **Testing**:
+  ```
+  pytest # all tests
+
+  pytest <test_path(s)> # specific test
+  ```
