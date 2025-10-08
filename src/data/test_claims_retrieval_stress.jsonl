@@ -1,0 +1,10 @@
+{"id": 1, "claim": "Springfield is the capital of Illinois.", "expected_label": "True", "source": "https://en.wikipedia.org/wiki/Springfield,_Illinois"}
+{"id": 2, "claim": "Tbilisi is the capital of the country Georgia.", "expected_label": "True", "source": "https://en.wikipedia.org/wiki/Tbilisi"}
+{"id": 3, "claim": "Paris is the capital of the U.S. state of Texas.", "expected_label": "False", "source": "https://en.wikipedia.org/wiki/Austin,_Texas"}
+{"id": 4, "claim": "La Paz is the only capital city of Bolivia.", "expected_label": "Unverifiable", "source": "https://en.wikipedia.org/wiki/La_Paz"}
+{"id": 5, "claim": "Java is an island in Indonesia.", "expected_label": "True", "source": "https://en.wikipedia.org/wiki/Java"}
+{"id": 6, "claim": "The River Thames flows through Manchester.", "expected_label": "False", "source": "https://en.wikipedia.org/wiki/River_Thames"}
+{"id": 7, "claim": "Mount Elbrus is located in the Caucasus Mountains.", "expected_label": "True", "source": "https://en.wikipedia.org/wiki/Mount_Elbrus"}
+{"id": 8, "claim": "The city of Alexandria referred to in ancient Mediterranean history is in present-day Iraq.", "expected_label": "False", "source": "https://en.wikipedia.org/wiki/Alexandria"}
+{"id": 9, "claim": "Lake Baikal is the deepest lake in the world.", "expected_label": "True", "source": "https://en.wikipedia.org/wiki/Lake_Baikal"}
+{"id": 10, "claim": "The capital of the U.S. state of Georgia is Savannah.", "expected_label": "False", "source": "https://en.wikipedia.org/wiki/Atlanta"}

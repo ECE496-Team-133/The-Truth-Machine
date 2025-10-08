@@ -1,0 +1,20 @@
+{"id": 1, "claim": "The iPhone was released after the first Android phone.", "expected_label": "False", "source": "https://en.wikipedia.org/wiki/IPhone_(1st_generation)"}
+{"id": 2, "claim": "World War II ended before the Korean War began.", "expected_label": "True", "source": "https://en.wikipedia.org/wiki/World_War_II"}
+{"id": 3, "claim": "The Roman Empire fell before the discovery of America by Columbus.", "expected_label": "True", "source": "https://en.wikipedia.org/wiki/Fall_of_the_Western_Roman_Empire"}
+{"id": 4, "claim": "The Internet existed before the invention of the personal computer.", "expected_label": "False", "source": "https://en.wikipedia.org/wiki/History_of_the_Internet"}
+{"id": 5, "claim": "Barack Obama served as U.S. president before George W. Bush.", "expected_label": "False", "source": "https://en.wikipedia.org/wiki/Barack_Obama"}
+{"id": 6, "claim": "Mount Everest is higher than Mount Kilimanjaro.", "expected_label": "True", "source": "https://en.wikipedia.org/wiki/Mount_Everest"}
+{"id": 7, "claim": "Venus is hotter than Mercury.", "expected_label": "True", "source": "https://en.wikipedia.org/wiki/Venus"}
+{"id": 8, "claim": "The Atlantic Ocean is larger than the Pacific Ocean.", "expected_label": "False", "source": "https://en.wikipedia.org/wiki/Pacific_Ocean"}
+{"id": 9, "claim": "China has a larger population than Canada.", "expected_label": "True", "source": "https://en.wikipedia.org/wiki/China"}
+{"id": 10, "claim": "Mars is closer to the Sun than Earth.", "expected_label": "False", "source": "https://en.wikipedia.org/wiki/Mars"}
+{"id": 11, "claim": "Rainbows are formed due to the refraction and reflection of light in water droplets.", "expected_label": "True", "source": "https://en.wikipedia.org/wiki/Rainbow"}
+{"id": 12, "claim": "Vaccines cause autism in children.", "expected_label": "False", "source": "https://en.wikipedia.org/wiki/Vaccine_controversies"}
+{"id": 13, "claim": "Eating carrots improves human night vision dramatically.", "expected_label": "False", "source": "https://en.wikipedia.org/wiki/Carrot"}
+{"id": 14, "claim": "Global warming contributes to rising sea levels.", "expected_label": "True", "source": "https://en.wikipedia.org/wiki/Sea_level_rise"}
+{"id": 15, "claim": "Neil Armstrong walked on the Moon, and he was an American astronaut.", "expected_label": "True", "source": "https://en.wikipedia.org/wiki/Neil_Armstrong"}
+{"id": 16, "claim": "The Great Wall of China can be seen from space with the naked eye.", "expected_label": "False", "source": "https://en.wikipedia.org/wiki/Great_Wall_of_China"}
+{"id": 17, "claim": "Water is composed of two hydrogen atoms and one oxygen atom.", "expected_label": "True", "source": "https://en.wikipedia.org/wiki/Water"}
+{"id": 18, "claim": "The human brain is larger than that of an elephant.", "expected_label": "False", "source": "https://en.wikipedia.org/wiki/Human_brain"}
+{"id": 19, "claim": "The Earth rotates once every 24 hours.", "expected_label": "True", "source": "https://en.wikipedia.org/wiki/Earth%27s_rotation"}
+{"id": 20, "claim": "Lightning strikes the same place only once.", "expected_label": "False", "source": "https://en.wikipedia.org/wiki/Lightning"}

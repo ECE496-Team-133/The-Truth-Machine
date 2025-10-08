@@ -1,0 +1,10 @@
+{"id": 1, "claim": "Pluto is officially classified as a planet.", "expected_label": "False", "source": "https://en.wikipedia.org/wiki/Pluto"}
+{"id": 2, "claim": "The United Kingdom is a member of the European Union.", "expected_label": "False", "source": "https://en.wikipedia.org/wiki/Brexit"}
+{"id": 3, "claim": "The capital of Kazakhstan is Nur-Sultan.", "expected_label": "False", "source": "https://en.wikipedia.org/wiki/Astana"}
+{"id": 4, "claim": "The capital of Myanmar is Yangon.", "expected_label": "False", "source": "https://en.wikipedia.org/wiki/Naypyidaw"}
+{"id": 5, "claim": "The highest mountain in the United States is officially named Mount McKinley.", "expected_label": "False", "source": "https://en.wikipedia.org/wiki/Denali"}
+{"id": 6, "claim": "Coffee causes dehydration.", "expected_label": "Unverifiable", "source": "https://en.wikipedia.org/wiki/Caffeine#Physiological_effects"}
+{"id": 7, "claim": "Egg consumption increases the risk of heart disease.", "expected_label": "Unverifiable", "source": "https://en.wikipedia.org/wiki/Egg_as_food#Health_effects"}
+{"id": 8, "claim": "Vitamin C prevents the common cold.", "expected_label": "Unverifiable", "source": "https://en.wikipedia.org/wiki/Vitamin_C#Common_cold"}
+{"id": 9, "claim": "Red wine is good for your heart.", "expected_label": "Unverifiable", "source": "https://en.wikipedia.org/wiki/Alcohol_and_health"}
+{"id": 10, "claim": "Cracking your knuckles causes arthritis.", "expected_label": "False", "source": "https://en.wikipedia.org/wiki/Cracking_joints"}

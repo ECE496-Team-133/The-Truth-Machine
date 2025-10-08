@@ -12,7 +12,7 @@ load_dotenv(dotenv_path=ENV_PATH)
 class Settings(BaseSettings):
     custom_search_api_key: str = Field(validation_alias="CUSTOM_SEARCH_API_KEY")
     custom_search_engine_id: str = Field(validation_alias="CUSTOM_SEARCH_ENGINE_ID")
-    openai_api_key: str = Field(validation_alias="OPENAI_API_KEY")
+    openai_api_key: str = Field(default="not_needed_for_local_testing", validation_alias="OPENAI_API_KEY")
 
     model_config = SettingsConfigDict(
         env_file=str(ENV_PATH),

@@ -1,0 +1,50 @@
+{"id": 1, "claim": "Lebanon gained its independence in 1943.", "expected_label": "True", "source": "https://en.wikipedia.org/wiki/Lebanon"}
+{"id": 2, "claim": "The Great Wall of China was primarily built during the Ming dynasty.", "expected_label": "True", "source": "https://en.wikipedia.org/wiki/Great_Wall_of_China"}
+{"id": 3, "claim": "The Titanic sank in 1912 after hitting an iceberg.", "expected_label": "True", "source": "https://en.wikipedia.org/wiki/RMS_Titanic"}
+{"id": 4, "claim": "Albert Einstein developed the theory of relativity.", "expected_label": "True", "source": "https://en.wikipedia.org/wiki/Albert_Einstein"}
+{"id": 5, "claim": "The Battle of Waterloo occurred in 1815.", "expected_label": "True", "source": "https://en.wikipedia.org/wiki/Battle_of_Waterloo"}
+{"id": 6, "claim": "The United Nations was founded in 1945.", "expected_label": "True", "source": "https://en.wikipedia.org/wiki/United_Nations"}
+{"id": 7, "claim": "Mount Everest is the highest mountain above sea level.", "expected_label": "True", "source": "https://en.wikipedia.org/wiki/Mount_Everest"}
+{"id": 8, "claim": "The human heart has four chambers.", "expected_label": "True", "source": "https://en.wikipedia.org/wiki/Heart"}
+{"id": 9, "claim": "The Amazon River is the second-longest river in the world.", "expected_label": "True", "source": "https://en.wikipedia.org/wiki/Amazon_River"}
+{"id": 10, "claim": "The Declaration of Independence of the United States was signed in 1776.", "expected_label": "True", "source": "https://en.wikipedia.org/wiki/United_States_Declaration_of_Independence"}
+{"id": 11, "claim": "The first human landed on the Moon in 1969.", "expected_label": "True", "source": "https://en.wikipedia.org/wiki/Apollo_11"}
+{"id": 12, "claim": "The Pacific Ocean is the largest ocean on Earth.", "expected_label": "True", "source": "https://en.wikipedia.org/wiki/Pacific_Ocean"}
+{"id": 13, "claim": "The human body has 206 bones in adulthood.", "expected_label": "True", "source": "https://en.wikipedia.org/wiki/Human_skeleton"}
+{"id": 14, "claim": "The capital city of Japan is Tokyo.", "expected_label": "True", "source": "https://en.wikipedia.org/wiki/Tokyo"}
+{"id": 15, "claim": "The internet was originally developed by the U.S. Department of Defense.", "expected_label": "True", "source": "https://en.wikipedia.org/wiki/History_of_the_Internet"}
+{"id": 16, "claim": "Jupiter is the largest planet in our solar system.", "expected_label": "True", "source": "https://en.wikipedia.org/wiki/Jupiter"}
+{"id": 17, "claim": "Nelson Mandela became South Africa\u2019s first black president in 1994.", "expected_label": "True", "source": "https://en.wikipedia.org/wiki/Nelson_Mandela"}
+{"id": 18, "claim": "The Eiffel Tower was completed in 1889.", "expected_label": "True", "source": "https://en.wikipedia.org/wiki/Eiffel_Tower"}
+{"id": 19, "claim": "The element with the chemical symbol O is oxygen.", "expected_label": "True", "source": "https://en.wikipedia.org/wiki/Oxygen"}
+{"id": 20, "claim": "The speed of light in a vacuum is approximately 299,792 kilometers per second.", "expected_label": "True", "source": "https://en.wikipedia.org/wiki/Speed_of_light"}
+{"id": 21, "claim": "Water boils at 100 degrees Celsius at standard atmospheric pressure.", "expected_label": "True", "source": "https://en.wikipedia.org/wiki/Boiling_point"}
+{"id": 22, "claim": "The Earth orbits around the Sun once every 365 days.", "expected_label": "True", "source": "https://en.wikipedia.org/wiki/Earth%27s_orbit"}
+{"id": 23, "claim": "The Great Pyramid of Giza is one of the Seven Wonders of the Ancient World.", "expected_label": "True", "source": "https://en.wikipedia.org/wiki/Great_Pyramid_of_Giza"}
+{"id": 24, "claim": "William Shakespeare wrote the play 'Romeo and Juliet'.", "expected_label": "True", "source": "https://en.wikipedia.org/wiki/Romeo_and_Juliet"}
+{"id": 25, "claim": "The human body\u2019s largest organ is the skin.", "expected_label": "True", "source": "https://en.wikipedia.org/wiki/Human_skin"}
+{"id": 26, "claim": "The Eiffel Tower is located in Rome, Italy.", "expected_label": "False", "source": "https://en.wikipedia.org/wiki/Eiffel_Tower"}
+{"id": 27, "claim": "The Moon is larger than Earth.", "expected_label": "False", "source": "https://en.wikipedia.org/wiki/Moon"}
+{"id": 28, "claim": "The Nile River flows through South America.", "expected_label": "False", "source": "https://en.wikipedia.org/wiki/Nile"}
+{"id": 29, "claim": "The capital city of Canada is Toronto.", "expected_label": "False", "source": "https://en.wikipedia.org/wiki/Ottawa"}
+{"id": 30, "claim": "The Sun revolves around the Earth.", "expected_label": "False", "source": "https://en.wikipedia.org/wiki/Heliocentrism"}
+{"id": 31, "claim": "Humans have three lungs.", "expected_label": "False", "source": "https://en.wikipedia.org/wiki/Lung"}
+{"id": 32, "claim": "Mount Kilimanjaro is located in Nepal.", "expected_label": "False", "source": "https://en.wikipedia.org/wiki/Mount_Kilimanjaro"}
+{"id": 33, "claim": "The chemical symbol for gold is Ag.", "expected_label": "False", "source": "https://en.wikipedia.org/wiki/Gold"}
+{"id": 34, "claim": "Venus is the closest planet to the Sun.", "expected_label": "False", "source": "https://en.wikipedia.org/wiki/Mercury_(planet)"}
+{"id": 35, "claim": "There are 10 continents on Earth.", "expected_label": "False", "source": "https://en.wikipedia.org/wiki/Continent"}
+{"id": 36, "claim": "Water freezes at 0 degrees Fahrenheit.", "expected_label": "False", "source": "https://en.wikipedia.org/wiki/Freezing_point"}
+{"id": 37, "claim": "The Pacific Ocean is the smallest ocean.", "expected_label": "False", "source": "https://en.wikipedia.org/wiki/Pacific_Ocean"}
+{"id": 38, "claim": "Leonardo da Vinci painted The Starry Night.", "expected_label": "False", "source": "https://en.wikipedia.org/wiki/The_Starry_Night"}
+{"id": 39, "claim": "Australia is both a country and a continent.", "expected_label": "True", "source": "https://en.wikipedia.org/wiki/Australia"}
+{"id": 40, "claim": "Humans can breathe underwater without assistance.", "expected_label": "False", "source": "https://en.wikipedia.org/wiki/Human_respiratory_system"}
+{"id": 41, "claim": "The currency of Japan is the Yuan.", "expected_label": "False", "source": "https://en.wikipedia.org/wiki/Japanese_yen"}
+{"id": 42, "claim": "Mars has more gravity than Earth.", "expected_label": "False", "source": "https://en.wikipedia.org/wiki/Mars"}
+{"id": 43, "claim": "Pluto is still officially classified as a planet.", "expected_label": "False", "source": "https://en.wikipedia.org/wiki/Pluto"}
+{"id": 44, "claim": "The Amazon rainforest is located mainly in Africa.", "expected_label": "False", "source": "https://en.wikipedia.org/wiki/Amazon_rainforest"}
+{"id": 45, "claim": "The Statue of Liberty was a gift from the United Kingdom.", "expected_label": "False", "source": "https://en.wikipedia.org/wiki/Statue_of_Liberty"}
+{"id": 46, "claim": "The square root of 49 is 8.", "expected_label": "False", "source": "https://en.wikipedia.org/wiki/Square_root"}
+{"id": 47, "claim": "The first iPhone was released in 2010.", "expected_label": "False", "source": "https://en.wikipedia.org/wiki/IPhone_(1st_generation)"}
+{"id": 48, "claim": "The human brain is located in the chest cavity.", "expected_label": "False", "source": "https://en.wikipedia.org/wiki/Human_brain"}
+{"id": 49, "claim": "Bananas grow underground.", "expected_label": "False", "source": "https://en.wikipedia.org/wiki/Banana"}
+{"id": 50, "claim": "The capital of France is Berlin.", "expected_label": "False", "source": "https://en.wikipedia.org/wiki/Paris"}
