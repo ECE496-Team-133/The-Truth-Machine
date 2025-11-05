@@ -34,7 +34,7 @@ _session.mount("https://", _adapter)
 _session.headers.update({"User-Agent": WIKI_USER_AGENT, "Accept": "text/html,*/*"})
 
 
-def _extract_title_from_wiki_url(url: str) -> Optional[str]:
+def extract_title_from_wiki_url(url: str) -> Optional[str]:
     """
     Convert https://en.wikipedia.org/wiki/Ada_Lovelace  -> Ada_Lovelace
     Handles anchors and querystrings gracefully.
@@ -59,7 +59,6 @@ def _wiki_rest_plain_text(title: str) -> Optional[str]:
     rest_url = f"https://en.wikipedia.org/api/rest_v1/page/plain/{title}"
     r = _session.get(rest_url, timeout=30)
     if r.status_code == 200 and r.text.strip():
-        print(r.text)
         # The plain endpoint already returns readable text
         return r.text
     return None
@@ -169,7 +168,6 @@ def _wiki_rest_mobile_html(title: str) -> Optional[str]:
     for el in soup.select("h1,h2,h3,h4,h5,h6,p,li"):
         text = _extract_text_preserving_spacing(el)
         if text and len(text) > 10:
-            print(text)
             blocks.append(text)
     return "\n\n".join(blocks) if blocks else None
 
@@ -195,7 +193,6 @@ def _generic_html_scrape(url: str) -> Optional[str]:
     blocks = []
     for el in content.select("h1,h2,h3,h4,h5,h6,p,li"):
         text = _extract_text_preserving_spacing(el)
-        print(text)
         if text and len(text) > 10:
             blocks.append(text)
     return "\n\n".join(blocks) if blocks else None
@@ -209,7 +206,7 @@ def scrape_wikipedia_content(url: str) -> Optional[str]:
       • Always send a proper User-Agent and retry gently.
     """
     # Try Wikipedia-specific strategies if applicable
-    title = _extract_title_from_wiki_url(url)
+    title = extract_title_from_wiki_url(url)
     if title:
         # 1) Plain-text API
         try:
@@ -227,7 +224,6 @@ def scrape_wikipedia_content(url: str) -> Optional[str]:
             txt = _wiki_rest_mobile_html(title)
             if txt:
                 print("Mobile HTML API")
-                print(txt)
                 return txt
         except requests.HTTPError:
             pass

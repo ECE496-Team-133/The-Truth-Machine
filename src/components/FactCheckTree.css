@@ -1,0 +1,38 @@
+.fact-check-tree {
+  margin-top: 40px;
+}
+
+.tree-header {
+  text-align: center;
+  color: white;
+  margin-bottom: 30px;
+}
+
+.tree-header h2 {
+  font-size: 2rem;
+  margin-bottom: 10px;
+}
+
+.total-time {
+  font-size: 1rem;
+  opacity: 0.9;
+}
+
+.claims-container {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.no-claims {
+  text-align: center;
+  color: white;
+  padding: 40px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+}
+
+.no-claims p {
+  font-size: 1.2rem;
+}
+
