@@ -26,4 +26,6 @@ def find_answer_in_article(scraped_content: str, claim: str) -> Optional[ClaimRe
 def build_text_fragment_link(url: str, evidence: Optional[str]) -> str:
     if not evidence:
         return url
-    return f"{url}#:~:text={quote(evidence)}"
+    # Use quote with safe='' to encode all characters including spaces and Unicode
+    # This matches JavaScript's encodeURIComponent behavior for text fragments
+    return f"{url}#:~:text={quote(evidence, safe='')}"
