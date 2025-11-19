@@ -5,11 +5,12 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from typing import Optional, Dict, List, Generator
+from typing import Optional, Dict, List, Generator, Tuple
 import time
 import asyncio
 import json
 from contextlib import asynccontextmanager
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from src.utils.config import SETTINGS  # noqa: F401
 from src.utils.claims import (
@@ -22,6 +23,7 @@ from src.utils.claims import (
 from src.utils.google_custom_search import get_first_n_results_urls
 from src.utils.wikipedia_scraper import scrape_wikipedia_content, extract_title_from_wiki_url
 from src.utils.factcheck import find_answer_in_article, build_text_fragment_link
+from src.utils.models import AdditionalInfoItem
 
 
 # Global cache for scraped articles
@@ -100,6 +102,217 @@ def get_or_scrape_article(article_query: str, top_n_urls: int = 1) -> tuple[Opti
     return None, None
 
 
+def _process_single_prerequisite(
+    prerequisite: str, 
+    index: int, 
+    total: int, 
+    top_n_urls: int,
+    progress_callback: Optional[callable]
+) -> Tuple[int, PrerequisiteNode]:
+    """Process a single prerequisite in parallel. Returns (index, PrerequisiteNode)."""
+    prereq_node = PrerequisiteNode(
+        text=prerequisite,
+        validation=ValidationStatus(status="validating")
+    )
+    
+    if progress_callback:
+        progress_callback("prerequisite", f"Validating prerequisite {index}/{total}", {
+            "index": index,
+            "total": total,
+            "text": prerequisite,
+            "status": "validating"
+        })
+        progress_callback("prerequisite", f"Selecting Wikipedia article for prerequisite {index}...", {
+            "index": index,
+            "status": "selecting_article"
+        })
+    
+    # Get article for prerequisite
+    article_query = get_query_for_wiki_article(prerequisite)
+    if not article_query:
+        prereq_node.validation.status = "failed"
+        prereq_node.validation.error = "Failed to get article query"
+        if progress_callback:
+            progress_callback("prerequisite", f"Failed to get article query for prerequisite {index}", {
+                "index": index,
+                "status": "failed"
+            })
+        return (index - 1, prereq_node)  # Convert to 0-based index
+    
+    prereq_node.validation.article_query = article_query
+    
+    if progress_callback:
+        progress_callback("prerequisite", f"Fetching article: {article_query}", {
+            "index": index,
+            "article_query": article_query,
+            "status": "fetching_article"
+        })
+    
+    # Get or scrape article
+    url, content = get_or_scrape_article(article_query, top_n_urls)
+    if not content:
+        prereq_node.validation.status = "failed"
+        prereq_node.validation.error = "Failed to scrape article"
+        if progress_callback:
+            progress_callback("prerequisite", f"Failed to scrape article for prerequisite {index}", {
+                "index": index,
+                "status": "failed"
+            })
+        return (index - 1, prereq_node)
+    
+    # Fact check prerequisite
+    if progress_callback:
+        progress_callback("prerequisite", f"Fact-checking prerequisite {index}...", {
+            "index": index,
+            "status": "factchecking"
+        })
+    
+    result = find_answer_in_article(content, prerequisite)
+    if not result:
+        prereq_node.validation.status = "failed"
+        prereq_node.validation.error = "Failed to fact-check prerequisite"
+        if progress_callback:
+            progress_callback("prerequisite", f"Failed to fact-check prerequisite {index}", {
+                "index": index,
+                "status": "failed"
+            })
+        return (index - 1, prereq_node)
+    
+    # Set validation results
+    prereq_node.validation.label = result.label
+    prereq_node.validation.evidence = result.evidence
+    prereq_node.validation.article_url = url
+    prereq_node.validation.link = build_text_fragment_link(url, result.evidence)
+    
+    if result.label == "True":
+        prereq_node.validation.status = "validated"
+        if progress_callback:
+            progress_callback("prerequisite", f"Prerequisite {index} validated: {result.label}", {
+                "index": index,
+                "status": "validated",
+                "label": result.label
+            })
+    else:
+        prereq_node.validation.status = "failed"
+        prereq_node.validation.error = f"Prerequisite validation failed: {result.label}"
+        if progress_callback:
+            progress_callback("prerequisite", f"Prerequisite {index} failed: {result.label}", {
+                "index": index,
+                "status": "failed",
+                "label": result.label
+            })
+    
+    return (index - 1, prereq_node)
+
+
+def _process_single_additional_info(
+    info_item: AdditionalInfoItem,
+    index: int,
+    total: int,
+    top_n_urls: int,
+    extracted_info: Dict[str, str],
+    progress_callback: Optional[callable]
+) -> Tuple[int, AdditionalInfoNode]:
+    """Process a single additional info item in parallel. Returns (index, AdditionalInfoNode)."""
+    info_node = AdditionalInfoNode(
+        purpose=info_item.purpose,
+        question=info_item.question,
+        validation=ValidationStatus(status="validating")
+    )
+    
+    if progress_callback:
+        progress_callback("additional_info", f"Extracting info {index}/{total}: {info_item.purpose}", {
+            "index": index,
+            "total": total,
+            "purpose": info_item.purpose,
+            "question": info_item.question,
+            "status": "validating"
+        })
+    
+    # Enhance question with previously extracted information
+    enhanced_question = info_item.question
+    if extracted_info:
+        context_lines = [f"- {key}: {value}" for key, value in extracted_info.items()]
+        context_str = "Previously extracted information:\n" + "\n".join(context_lines)
+        enhanced_question = f"{info_item.question}\n\n{context_str}"
+    
+    # Get article for question
+    if progress_callback:
+        progress_callback("additional_info", f"Selecting article for info {index}...", {
+            "index": index,
+            "status": "selecting_article"
+        })
+    
+    article_query = get_query_for_wiki_article(enhanced_question)
+    if not article_query:
+        info_node.validation.status = "failed"
+        info_node.validation.error = "Failed to get article query"
+        if progress_callback:
+            progress_callback("additional_info", f"Failed to get article query for info {index}", {
+                "index": index,
+                "status": "failed"
+            })
+        return (index - 1, info_node)
+    
+    info_node.validation.article_query = article_query
+    
+    if progress_callback:
+        progress_callback("additional_info", f"Fetching article: {article_query}", {
+            "index": index,
+            "article_query": article_query,
+            "status": "fetching_article"
+        })
+    
+    # Get or scrape article
+    url, content = get_or_scrape_article(article_query, top_n_urls)
+    if not content:
+        info_node.validation.status = "failed"
+        info_node.validation.error = "Failed to scrape article"
+        if progress_callback:
+            progress_callback("additional_info", f"Failed to scrape article for info {index}", {
+                "index": index,
+                "status": "failed"
+            })
+        return (index - 1, info_node)
+    
+    info_node.validation.article_url = url
+    
+    # Extract answer from article
+    if progress_callback:
+        progress_callback("additional_info", f"Extracting answer from article for info {index}...", {
+            "index": index,
+            "status": "extracting"
+        })
+    
+    answer = extract_answer_from_article(enhanced_question, content)
+    if not answer or answer == "NOT_FOUND":
+        info_node.validation.status = "failed"
+        info_node.validation.error = "Failed to extract answer"
+        if progress_callback:
+            progress_callback("additional_info", f"Failed to extract answer for info {index}", {
+                "index": index,
+                "status": "failed"
+            })
+        return (index - 1, info_node)
+    
+    info_node.answer = answer
+    info_node.validation.status = "validated"
+    info_node.validation.evidence = answer
+    info_node.validation.link = build_text_fragment_link(url, answer)
+    
+    if progress_callback:
+        progress_callback("additional_info", f"Info {index} extracted: {answer[:50]}...", {
+            "index": index,
+            "status": "validated",
+            "answer": answer,
+            "evidence": answer,
+            "article_url": url,
+            "link": info_node.validation.link
+        })
+    
+    return (index - 1, info_node)
+
+
 def process_claim_with_plan(claim: str, top_n_urls: int = 1) -> ClaimNode:
     """Process a single claim with the new flow and return structured data (non-streaming version)."""
     return process_claim_with_plan_streaming(claim, top_n_urls, progress_callback=None)
@@ -158,293 +371,118 @@ def process_claim_with_plan_streaming(
             "final_claim_template": plan.final_claim_template
         })
     
-    # Step 2: Validate prerequisites
-    print("Validating pre-requisite info:")
-    prerequisite_nodes = []
-    for i, prerequisite in enumerate(plan.prerequisites, 1):
-        print(f"\nPrerequisite {i}/{len(plan.prerequisites)}: \"{prerequisite}\"")
-        
-        if progress_callback:
-            progress_callback("prerequisite", f"Validating prerequisite {i}/{len(plan.prerequisites)}", {
-                "index": i,
-                "total": len(plan.prerequisites),
-                "text": prerequisite,
-                "status": "validating"
-            })
-        
-        prereq_node = PrerequisiteNode(
-            text=prerequisite,
-            validation=ValidationStatus(status="validating")
-        )
-        
-        # Get article for prerequisite
-        print(f"-> LLM selects wikipedia article...")
-        if progress_callback:
-            progress_callback("prerequisite", f"Selecting Wikipedia article for prerequisite {i}...", {
-                "index": i,
-                "status": "selecting_article"
-            })
-        article_start = time.time()
-        article_query = get_query_for_wiki_article(prerequisite)
-        article_time = time.time() - article_start
-        if not article_query:
-            print(f"Failed to get article query for prerequisite")
-            prereq_node.validation.status = "failed"
-            prereq_node.validation.error = "Failed to get article query"
-            prerequisite_nodes.append(prereq_node)
-            if progress_callback:
-                progress_callback("prerequisite", f"Failed to get article query for prerequisite {i}", {
-                    "index": i,
-                    "status": "failed"
-                })
-            continue
-        
-        print(f"Article selected: \"{article_query}\" (took {article_time:.2f}s)")
-        prereq_node.validation.article_query = article_query
-        
-        # Get or scrape article
-        print(f"-> Fetching and scraping article...")
-        if progress_callback:
-            progress_callback("prerequisite", f"Fetching article: {article_query}", {
-                "index": i,
-                "article_query": article_query,
-                "status": "fetching_article"
-            })
-        url, content = get_or_scrape_article(article_query, top_n_urls)
-        if not content:
-            print(f"Failed to scrape article for prerequisite")
-            prereq_node.validation.status = "failed"
-            prereq_node.validation.error = "Failed to scrape article"
-            prerequisite_nodes.append(prereq_node)
-            if progress_callback:
-                progress_callback("prerequisite", f"Failed to scrape article for prerequisite {i}", {
-                    "index": i,
-                    "status": "failed"
-                })
-            continue
-        
-        print(f"Article and scraped text key value pair stored into Scraped_Articles_Cache")
-        print(f"Cache now contains: {list(Scraped_Articles_Cache.keys())}")
-        
-        # Fact check prerequisite
-        print("-> Fact check is ran on prerequisite...")
-        if progress_callback:
-            progress_callback("prerequisite", f"Fact-checking prerequisite {i}...", {
-                "index": i,
-                "status": "factchecking"
-            })
-        factcheck_start = time.time()
-        result = find_answer_in_article(content, prerequisite)
-        factcheck_time = time.time() - factcheck_start
-        if not result:
-            print(f"Failed to fact-check prerequisite")
-            prereq_node.validation.status = "failed"
-            prereq_node.validation.error = "Failed to fact-check prerequisite"
-            prerequisite_nodes.append(prereq_node)
-            if progress_callback:
-                progress_callback("prerequisite", f"Failed to fact-check prerequisite {i}", {
-                    "index": i,
-                    "status": "failed"
-                })
-            continue
-        
-        print(f"Prerequisite result: {result.label}")
-        print(f"Evidence: {result.evidence[:100]}..." if len(result.evidence) > 100 else f"Evidence: {result.evidence}")
-        
-        # Check if prerequisite is actually true
-        if result.label == "True":
-            prereq_node.validation.status = "validated"
-            prereq_node.validation.label = result.label
-            prereq_node.validation.evidence = result.evidence
-            prereq_node.validation.article_url = url
-            prereq_node.validation.link = build_text_fragment_link(url, result.evidence)
+    # Step 2: Validate prerequisites (in parallel)
+    print("Validating pre-requisite info (in parallel):")
+    prerequisite_nodes = [None] * len(plan.prerequisites)  # Pre-allocate list
+    
+    if plan.prerequisites:
+        # Process prerequisites in parallel
+        with ThreadPoolExecutor(max_workers=min(len(plan.prerequisites), 5)) as executor:
+            future_to_prereq = {
+                executor.submit(
+                    _process_single_prerequisite,
+                    prerequisite,
+                    i + 1,  # 1-based index for display
+                    len(plan.prerequisites),
+                    top_n_urls,
+                    progress_callback
+                ): (i, prerequisite)
+                for i, prerequisite in enumerate(plan.prerequisites)
+            }
             
-            prerequisite_nodes.append(prereq_node)
-            
-            print(f"Prerequisite {i} validated ✓")
-            
-            if progress_callback:
-                progress_callback("prerequisite", f"Prerequisite {i} validated: {result.label}", {
-                    "index": i,
-                    "status": "validated",
-                    "label": result.label
-                })
-        else:
-            # Prerequisite is False - mark as failed and stop processing
-            print(f"Prerequisite validation failed ({result.label}), cannot proceed")
-            prereq_node.validation.status = "failed"
-            prereq_node.validation.label = result.label
-            prereq_node.validation.evidence = result.evidence
-            prereq_node.validation.article_url = url
-            prereq_node.validation.link = build_text_fragment_link(url, result.evidence)
-            prereq_node.validation.error = f"Prerequisite validation failed: {result.label}"
-            
-            prerequisite_nodes.append(prereq_node)
-            
-            if progress_callback:
-                progress_callback("prerequisite", f"Prerequisite {i} failed: {result.label}", {
-                    "index": i,
-                    "status": "failed",
-                    "label": result.label
-                })
-            
-            # Stop processing and mark final claim as failed
-            if progress_callback:
-                progress_callback("step", f"Prerequisite {i} failed. Cannot proceed with fact-checking.", {
-                    "prerequisite_index": i,
-                    "status": "failed"
-                })
-            
-            # Return claim with failed prerequisite and failed final validation
-            return ClaimNode(
-                text=claim,
-                prerequisites=prerequisite_nodes,
-                additional_info=[],
-                final_claim=None,
-                final_validation=ValidationStatus(
-                    status="failed",
-                    error=f"Cannot proceed: Prerequisite {i} validation failed ({result.label})"
-                )
-            )
+            for future in as_completed(future_to_prereq):
+                i, prerequisite = future_to_prereq[future]
+                try:
+                    idx, prereq_node = future.result()
+                    prerequisite_nodes[idx] = prereq_node
+                    
+                    # Check if prerequisite failed (not True)
+                    if prereq_node.validation.status == "failed" or (
+                        prereq_node.validation.label and prereq_node.validation.label != "True"
+                    ):
+                        print(f"Prerequisite {idx + 1} failed, stopping processing")
+                        # Fill remaining slots with None
+                        for j in range(len(prerequisite_nodes)):
+                            if prerequisite_nodes[j] is None:
+                                prerequisite_nodes[j] = PrerequisiteNode(
+                                    text=plan.prerequisites[j],
+                                    validation=ValidationStatus(status="pending")
+                                )
+                        # Return early if prerequisite failed
+                        return ClaimNode(
+                            text=claim,
+                            prerequisites=prerequisite_nodes,
+                            additional_info=[],
+                            final_claim=None,
+                            final_validation=ValidationStatus(
+                                status="failed",
+                                error=f"Cannot proceed: Prerequisite {idx + 1} validation failed"
+                            )
+                        )
+                except Exception as e:
+                    print(f"Error processing prerequisite: {e}")
+                    # Create failed node
+                    prerequisite_nodes[i] = PrerequisiteNode(
+                        text=prerequisite,
+                        validation=ValidationStatus(
+                            status="failed",
+                            error=f"Error: {str(e)}"
+                        )
+                    )
+    
+    # Filter out None values (shouldn't happen, but safety check)
+    prerequisite_nodes = [p for p in prerequisite_nodes if p is not None]
     
     if plan.prerequisites:
         print("\nAll prerequisites validated, proceed\n")
     
-    # Step 3: Extract additional info
+    # Step 3: Extract additional info (in parallel)
     extracted_info = {}
-    additional_info_nodes = []
+    additional_info_nodes = [None] * len(plan.additional_info_needed)  # Pre-allocate list
     
     if plan.additional_info_needed:
-        print("Additional info required to validate? Yes:")
+        print("Additional info required to validate? Yes (processing in parallel):")
         
-    for i, info_item in enumerate(plan.additional_info_needed, 1):
-        print(f"\nExtracting info {i}/{len(plan.additional_info_needed)}: {info_item.purpose}")
-        print(f"Question: \"{info_item.question}\"")
-        
-        if progress_callback:
-            progress_callback("additional_info", f"Extracting info {i}/{len(plan.additional_info_needed)}: {info_item.purpose}", {
-                "index": i,
-                "total": len(plan.additional_info_needed),
-                "purpose": info_item.purpose,
-                "question": info_item.question,
-                "status": "validating"
-            })
-        info_node = AdditionalInfoNode(
+        # Process additional info items in parallel
+        # Note: We process without context from other items for true parallelism
+        # Context enhancement can be added in a second pass if needed
+        with ThreadPoolExecutor(max_workers=min(len(plan.additional_info_needed), 5)) as executor:
+            future_to_info = {
+                executor.submit(
+                    _process_single_additional_info,
+                    info_item,
+                    i + 1,  # 1-based index for display
+                    len(plan.additional_info_needed),
+                    top_n_urls,
+                    {},  # Empty extracted_info for parallel processing
+                    progress_callback
+                ): (i, info_item)
+                for i, info_item in enumerate(plan.additional_info_needed)
+            }
+            
+            for future in as_completed(future_to_info):
+                i, info_item = future_to_info[future]
+                try:
+                    idx, info_node = future.result()
+                    additional_info_nodes[idx] = info_node
+                    
+                    # Collect extracted info for final claim generation
+                    if info_node.answer and info_node.validation.status == "validated":
+                        extracted_info[info_item.purpose] = info_node.answer
+                except Exception as e:
+                    print(f"Error processing additional info: {e}")
+                    # Create failed node
+                    additional_info_nodes[i] = AdditionalInfoNode(
             purpose=info_item.purpose,
             question=info_item.question,
-            validation=ValidationStatus(status="validating")
-        )
+                        validation=ValidationStatus(
+                            status="failed",
+                            error=f"Error: {str(e)}"
+                        )
+                    )
         
-        # Enhance question with previously extracted information
-        enhanced_question = info_item.question
-        if extracted_info:
-            context_lines = [f"- {key}: {value}" for key, value in extracted_info.items()]
-            context_str = "Previously extracted information:\n" + "\n".join(context_lines)
-            enhanced_question = f"{info_item.question}\n\n{context_str}"
-            print(f"Enhanced question with context: {extracted_info}")
-        
-        # Get article for question
-        print(f"-> LLM selects wikipedia article...")
-        if progress_callback:
-            progress_callback("additional_info", f"Selecting article for info {i}...", {
-                "index": i,
-                "status": "selecting_article"
-            })
-        article_start = time.time()
-        article_query = get_query_for_wiki_article(enhanced_question)
-        article_time = time.time() - article_start
-        if not article_query:
-            print(f"Failed to get article query")
-            info_node.validation.status = "failed"
-            info_node.validation.error = "Failed to get article query"
-            additional_info_nodes.append(info_node)
-            if progress_callback:
-                progress_callback("additional_info", f"Failed to get article query for info {i}", {
-                    "index": i,
-                    "status": "failed"
-                })
-            continue
-        
-        print(f"Article selected: \"{article_query}\" (took {article_time:.2f}s)")
-        info_node.validation.article_query = article_query
-        
-        # Get or scrape article
-        cache_size_before = len(Scraped_Articles_Cache)
-        if progress_callback:
-            progress_callback("additional_info", f"Fetching article: {article_query}", {
-                "index": i,
-                "article_query": article_query,
-                "status": "fetching_article"
-            })
-        url, content = get_or_scrape_article(article_query, top_n_urls)
-        if not content:
-            print(f"Failed to scrape article")
-            info_node.validation.status = "failed"
-            info_node.validation.error = "Failed to scrape article"
-            additional_info_nodes.append(info_node)
-            if progress_callback:
-                progress_callback("additional_info", f"Failed to scrape article for info {i}", {
-                    "index": i,
-                    "status": "failed"
-                })
-            continue
-        
-        cache_size_after = len(Scraped_Articles_Cache)
-        if cache_size_after > cache_size_before:
-            print(f"Article scraped and cached")
-            print(f"Cache now contains: {list(Scraped_Articles_Cache.keys())}")
-        else:
-            print(f"Article already in cache, using cached content")
-        
-        info_node.validation.article_url = url
-        
-        # Extract answer from article
-        print(f"-> Running question on article...")
-        if progress_callback:
-            progress_callback("additional_info", f"Extracting answer from article for info {i}...", {
-                "index": i,
-                "status": "extracting"
-            })
-        extract_start = time.time()
-        answer = extract_answer_from_article(enhanced_question, content)
-        extract_time = time.time() - extract_start
-        if not answer or answer == "NOT_FOUND":
-            print(f"Failed to extract answer")
-            info_node.validation.status = "failed"
-            info_node.validation.error = "Failed to extract answer"
-            additional_info_nodes.append(info_node)
-            if progress_callback:
-                progress_callback("additional_info", f"Failed to extract answer for info {i}", {
-                    "index": i,
-                    "status": "failed"
-                })
-            continue
-        
-        print(f"LLM Returns \"{answer}\" (took {extract_time:.2f}s)")
-        info_node.answer = answer
-        info_node.validation.status = "validated"
-        
-        # Store evidence and create link to article
-        # For additional info, the evidence is the answer itself, but we want to show it properly
-        if answer and url:
-            # Use the answer as evidence, but try to find a better context from the article
-            # For now, use the answer as evidence
-            info_node.validation.evidence = answer
-            # Create a text fragment link pointing to the answer in the article
-            info_node.validation.link = build_text_fragment_link(url, answer)
-        
-        extracted_info[info_item.purpose] = answer
-        additional_info_nodes.append(info_node)
-        
-        if progress_callback:
-            progress_callback("additional_info", f"Info {i} extracted: {answer[:50]}...", {
-                "index": i,
-                "status": "validated",
-                "answer": answer,
-                "evidence": answer,
-                "article_url": url,
-                "link": info_node.validation.link
-            })
+        # Filter out None values
+        additional_info_nodes = [a for a in additional_info_nodes if a is not None]
     
     # Step 4: Generate final claim
     print("\nFinal Claim to Check:")
