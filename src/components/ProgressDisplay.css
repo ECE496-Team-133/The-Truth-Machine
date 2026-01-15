@@ -1,9 +1,14 @@
 .progress-display {
-  background: white;
-  border-radius: 16px;
-  padding: 24px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  padding: 32px;
   margin: 20px 0;
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
   max-height: 600px;
   overflow-y: auto;
 }
@@ -13,45 +18,57 @@
   align-items: center;
   gap: 16px;
   margin-bottom: 24px;
-  padding-bottom: 16px;
-  border-bottom: 2px solid #e0e0e0;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .progress-header h3 {
   margin: 0;
-  color: #333;
+  color: var(--text-primary);
   font-size: 1.3rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .progress-steps {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
 }
 
 .progress-step {
   display: flex;
   align-items: flex-start;
   gap: 16px;
-  padding: 16px;
-  background: #f8f9fa;
-  border-radius: 12px;
-  border-left: 4px solid #9e9e9e;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 16px;
+  border-left: 3px solid rgba(158, 158, 158, 0.4);
+  border: 1px solid var(--border-color);
   transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.progress-step:hover {
+  background: rgba(255, 255, 255, 0.05);
+  transform: translateX(4px);
 }
 
 .progress-step.current {
-  background: #fff8e1;
-  border-left-color: #ff9800;
-  box-shadow: 0 2px 8px rgba(255, 152, 0, 0.2);
+  background: rgba(255, 152, 0, 0.1);
+  border-color: rgba(255, 152, 0, 0.4);
+  border-left-width: 4px;
+  box-shadow: 0 4px 20px rgba(255, 152, 0, 0.2);
 }
 
 .step-indicator {
   font-size: 1.5rem;
-  min-width: 32px;
+  min-width: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
+  filter: drop-shadow(0 0 8px currentColor);
 }
 
 .step-content {
@@ -59,19 +76,22 @@
 }
 
 .step-message {
-  margin: 0 0 4px 0;
-  color: #333;
+  margin: 0 0 8px 0;
+  color: var(--text-primary);
   font-weight: 500;
   font-size: 1rem;
+  line-height: 1.5;
 }
 
 .step-detail {
   margin: 4px 0 0 0;
-  color: #666;
+  color: var(--text-secondary);
   font-size: 0.9rem;
+  line-height: 1.5;
 }
 
 .step-detail strong {
-  color: #333;
+  color: var(--text-primary);
+  font-weight: 600;
 }
 

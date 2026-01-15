@@ -467,7 +467,7 @@ function App() {
     <div className="app">
       <div className="app-container">
         <header className="app-header">
-          <h1>🔍 The Truth Machine</h1>
+          <h1>The Truth Machine</h1>
           <p>Fact-check claims against Wikipedia with AI-powered validation</p>
         </header>
 

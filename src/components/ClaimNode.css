@@ -1,45 +1,102 @@
 .claim-node {
-  background: white;
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  padding: 32px;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.claim-node::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary), var(--accent-primary));
+  background-size: 200% 100%;
+  animation: gradient-flow 3s ease infinite;
+}
+
+@keyframes gradient-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.claim-node:hover {
+  transform: translateY(-4px);
+  box-shadow: 
+    0 12px 40px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    0 0 0 1px rgba(0, 255, 136, 0.2);
 }
 
 .claim-header {
-  margin-bottom: 24px;
-  padding-bottom: 16px;
-  border-bottom: 2px solid #e0e0e0;
+  margin-bottom: 28px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-color);
   overflow: visible;
   word-wrap: break-word;
 }
 
 .claim-title {
   font-size: 1.5rem;
-  color: #667eea;
-  margin-bottom: 8px;
-  font-weight: 600;
+  background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 12px;
+  font-weight: 700;
   white-space: nowrap;
   word-break: keep-all;
   overflow: visible;
+  letter-spacing: -0.01em;
 }
 
 .claim-text {
   font-size: 1.1rem;
-  color: #333;
-  line-height: 1.6;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  font-weight: 400;
 }
 
 .claim-content {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 28px;
 }
 
 .section-title {
-  font-size: 1.3rem;
-  color: #764ba2;
-  margin-bottom: 16px;
+  font-size: 1.25rem;
+  color: var(--text-primary);
+  margin-bottom: 20px;
   font-weight: 600;
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.section-title::before {
+  content: '';
+  width: 4px;
+  height: 20px;
+  background: linear-gradient(180deg, var(--accent-primary), var(--accent-secondary));
+  border-radius: 2px;
 }
 
 .blocks-container {
@@ -51,8 +108,11 @@
 .prerequisites-section,
 .additional-info-section,
 .final-claim-section {
-  padding: 16px;
-  background: #f8f9fa;
-  border-radius: 12px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
