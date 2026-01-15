@@ -13,7 +13,7 @@ function App() {
   const [incrementalData, setIncrementalData] = useState(null)
   const [abortController, setAbortController] = useState(null)
 
-  const handleQuerySubmit = async (query) => {
+  const handleQuerySubmit = async (query, sources = ['wikipedia']) => {
     // Cancel any existing request
     if (abortController) {
       abortController.abort()
@@ -36,7 +36,7 @@ function App() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ query, top_n_urls: 1 }),
+        body: JSON.stringify({ query, top_n_urls: 1, sources }),
         signal: controller.signal,
       })
 

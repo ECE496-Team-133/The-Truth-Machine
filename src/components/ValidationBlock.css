@@ -129,6 +129,23 @@
   border-radius: 8px;
 }
 
+.block-source {
+  font-size: 0.9rem;
+  color: #666;
+  margin-top: 8px;
+}
+
+.source-badge {
+  display: inline-block;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  margin-left: 6px;
+}
+
 .block-link {
   display: inline-block;
   margin-top: 8px;

@@ -49,6 +49,13 @@ pip install -r requirements.txt
 In one terminal:
 
 ```bash
+# Make the script executable (first time only)
+chmod +x start_api.sh
+
+# Start the API server
+./start_api.sh
+
+# Or manually:
 python -m uvicorn src.api:app --reload --host 0.0.0.0 --port 8000
 ```
 

@@ -25,7 +25,7 @@ function ClaimNode({ claim, index, isProcessing = false, currentStep = null }) {
     >
       <div className="claim-header">
         <h3 className="claim-title">Claim {index + 1}</h3>
-        <p className="claim-text">{claim.text}</p>
+        <p className="claim-text">{claim.text || 'Loading claim...'}</p>
       </div>
 
       <div className="claim-content">

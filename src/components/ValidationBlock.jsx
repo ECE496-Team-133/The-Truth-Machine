@@ -30,6 +30,8 @@ function ValidationBlock({ title, subtitle, answer, validation, type, isCurrentl
   const link = validation?.link
   const error = validation?.error
   const articleQuery = validation?.article_query
+  const source = validation?.source
+  const sourcesChecked = validation?.sources_checked || []
 
   // If status is "validated" but label is "False", it should be "failed"
   if (status === 'validated' && label === 'False') {
@@ -101,6 +103,16 @@ function ValidationBlock({ title, subtitle, answer, validation, type, isCurrentl
             <strong>Error:</strong> {error}
           </div>
         )}
+        {(source || sourcesChecked.length > 0) && (
+          <div className="block-source">
+            <strong>Source{source ? ':' : 's checked:'}</strong>{' '}
+            {source ? (
+              <span className="source-badge">{source.charAt(0).toUpperCase() + source.slice(1)}</span>
+            ) : (
+              <span>{sourcesChecked.map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(', ')}</span>
+            )}
+          </div>
+        )}
         {link && (
           <div className="block-link">
             <a
@@ -108,7 +120,7 @@ function ValidationBlock({ title, subtitle, answer, validation, type, isCurrentl
               target="_blank"
               rel="noopener noreferrer"
             >
-              🔗 View Source
+              🔗 View Source {source && `(${source.charAt(0).toUpperCase() + source.slice(1)})`}
             </a>
           </div>
         )}

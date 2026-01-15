@@ -3,6 +3,7 @@ from .constants import (
     MODEL_CLAIM_EXTRACTION,
     MODEL_CLAIM_OPTIMIZATION,
     MODEL_WIKI_TARGET,
+    MODEL_NEWS_QUERY,
     MODEL_PREREQUISITE,
     MODEL_CLARIFYING_QUESTION,
     MODEL_EXTRACT_ANSWER,
@@ -11,6 +12,7 @@ from .constants import (
     PROMPT_EXTRACT_CLAIMS,
     PROMPT_OPTIMIZE_CLAIM,
     PROMPT_WIKI_ARTICLE_NAME,
+    PROMPT_NEWS_QUERY,
     PROMPT_PREREQUISITE,
     PROMPT_CLARIFYING_QUESTION,
     PROMPT_EXTRACT_ANSWER,
@@ -55,6 +57,34 @@ def get_query_for_wiki_article(claim: str) -> str:
     except Exception as e:
         print(f"[ERROR] get_query_for_wiki_article failed: {e}")
         return ""
+
+
+def get_query_for_news(claim: str) -> str:
+    """Convert a claim into an optimized search query for news sources."""
+    client = get_client()
+    prompt = PROMPT_NEWS_QUERY.format(claim=claim)
+    try:
+        resp = client.responses.create(model=MODEL_NEWS_QUERY, input=prompt)
+        optimized = getattr(resp, "output_text", None)
+        if optimized and optimized.strip():
+            # Clean up the response (remove quotes, extra whitespace)
+            optimized = optimized.strip().strip('"').strip("'")
+            print(f"[DEBUG] News query optimization: '{claim}' → '{optimized}'")
+            return optimized
+        else:
+            print(f"[WARNING] News query optimization returned empty, using original claim")
+            return claim
+    except Exception as e:
+        print(f"[ERROR] get_query_for_news failed: {e}")
+        # Fallback: extract key terms from claim
+        import re
+        # Remove common words and extract key terms
+        words = re.findall(r'\b[A-Z][a-z]+\b|\b[A-Z]{2,}\b', claim)
+        if words:
+            fallback = ' '.join(words[:5])  # Take first 5 capitalized words/abbreviations
+            print(f"[INFO] Using fallback news query: '{fallback}'")
+            return fallback
+        return claim
 
 
 def generate_prerequisite(query: str) -> str:

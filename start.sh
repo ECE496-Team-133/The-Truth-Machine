@@ -17,6 +17,12 @@ cd "$SCRIPT_DIR"
 # Function to cleanup background processes
 cleanup() {
     echo -e "\n${YELLOW}Shutting down servers...${NC}"
+    if [ ! -z "$TAIL_BACKEND_PID" ]; then
+        kill $TAIL_BACKEND_PID 2>/dev/null || true
+    fi
+    if [ ! -z "$TAIL_FRONTEND_PID" ]; then
+        kill $TAIL_FRONTEND_PID 2>/dev/null || true
+    fi
     if [ ! -z "$BACKEND_PID" ]; then
         kill $BACKEND_PID 2>/dev/null || true
         echo -e "${GREEN}✓ Backend stopped${NC}"
@@ -100,8 +106,15 @@ echo -e "${GREEN}✓ Node dependencies OK${NC}\n"
 # Start backend
 echo -e "${BLUE}Starting backend server on http://localhost:8000...${NC}"
 export PYTHONPATH="${PYTHONPATH}:${SCRIPT_DIR}"
-python3 -m uvicorn src.api:app --reload --host 0.0.0.0 --port 8000 > /tmp/truth-machine-backend.log 2>&1 &
+export PYTHONUNBUFFERED=1
+
+# Start backend - output to log file and also tail it to show in terminal
+python3 -u -m uvicorn src.api:app --reload --host 0.0.0.0 --port 8000 > /tmp/truth-machine-backend.log 2>&1 &
 BACKEND_PID=$!
+
+# Tail the log file in the background with prefix
+tail -f /tmp/truth-machine-backend.log | sed 's/^/[BACKEND] /' &
+TAIL_BACKEND_PID=$!
 
 # Wait for backend to be ready
 echo -e "${YELLOW}Waiting for backend to start...${NC}"
@@ -116,12 +129,12 @@ for i in {1..30}; do
             if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
                 echo -e "\n${YELLOW}Backend crashed due to dependency issue. Fixing and retrying...${NC}"
                 pip uninstall -y pydantic-core pydantic pydantic-settings 2>/dev/null || true
-                pip install --no-cache-dir "pydantic>=2.8.2" "pydantic-settings>=2.4.0"
+                pip install --no-cache-dir pydantic>=2.8.2 pydantic-settings>=2.4.0
                 RETRY_COUNT=$((RETRY_COUNT + 1))
                 
                 # Restart backend
                 echo -e "${BLUE}Restarting backend...${NC}"
-                python3 -m uvicorn src.api:app --reload --host 0.0.0.0 --port 8000 > /tmp/truth-machine-backend.log 2>&1 &
+                python3 -u -m uvicorn src.api:app --reload --host 0.0.0.0 --port 8000 > /tmp/truth-machine-backend.log 2>&1 &
                 BACKEND_PID=$!
                 i=0  # Reset counter
                 continue
@@ -161,6 +174,10 @@ echo -e "${BLUE}Starting frontend server on http://localhost:5173...${NC}"
 npm run dev > /tmp/truth-machine-frontend.log 2>&1 &
 FRONTEND_PID=$!
 
+# Tail the frontend log file in the background with prefix
+tail -f /tmp/truth-machine-frontend.log | sed 's/^/[FRONTEND] /' &
+TAIL_FRONTEND_PID=$!
+
 # Wait for frontend to be ready
 echo -e "${YELLOW}Waiting for frontend to start...${NC}"
 for i in {1..20}; do
@@ -198,11 +215,8 @@ echo -e "${GREEN}========================================${NC}"
 echo -e "${BLUE}Backend:${NC}  http://localhost:8000"
 echo -e "${BLUE}Frontend:${NC} http://localhost:5173"
 echo -e "\n${YELLOW}Press Ctrl+C to stop both servers${NC}\n"
-
-# Show logs from both processes
-tail -f /tmp/truth-machine-backend.log /tmp/truth-machine-frontend.log 2>/dev/null &
-TAIL_PID=$!
+echo -e "${BLUE}Logs will appear below with [BACKEND] and [FRONTEND] prefixes${NC}\n"
 
 # Wait for either process to exit
+# Logs are already being displayed in real-time via tail processes above
 wait $BACKEND_PID $FRONTEND_PID
-kill $TAIL_PID 2>/dev/null || true

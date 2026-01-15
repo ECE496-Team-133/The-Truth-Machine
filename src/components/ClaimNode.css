@@ -9,12 +9,18 @@
   margin-bottom: 24px;
   padding-bottom: 16px;
   border-bottom: 2px solid #e0e0e0;
+  overflow: visible;
+  word-wrap: break-word;
 }
 
 .claim-title {
   font-size: 1.5rem;
   color: #667eea;
   margin-bottom: 8px;
+  font-weight: 600;
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow: visible;
 }
 
 .claim-text {

@@ -6,6 +6,7 @@ MODEL_CLAIM_EXTRACTION = "gpt-5-nano"
 MODEL_CLAIM_OPTIMIZATION = "gpt-5-mini"
 MODEL_FACTCHECK = "gpt-5-nano"
 MODEL_WIKI_TARGET = "gpt-5-nano"
+MODEL_NEWS_QUERY = "gpt-5-nano"
 MODEL_PREREQUISITE = "gpt-5-nano"
 MODEL_CLARIFYING_QUESTION = "gpt-5-nano"
 MODEL_EXTRACT_ANSWER = "gpt-5-nano"
@@ -29,6 +30,17 @@ PROMPT_WIKI_ARTICLE_NAME = (
     'If context is provided, use it to resolve any references (e.g., "the actor" should be replaced with the actual name from context). '
     'Return only the article name, nothing else.\n\n'
     'Claim/Question: "{claim}"'
+)
+
+PROMPT_NEWS_QUERY = (
+    'Convert the following claim into a concise news search query with key terms that would appear in news articles. '
+    'Extract the main entities, topics, and keywords. Use common news terminology and abbreviations where appropriate. '
+    'Return only the search query, nothing else.\n\n'
+    'Examples:\n'
+    '- "The United Kingdom is a member of the European Union" → "United Kingdom EU membership Brexit"\n'
+    '- "The actor who played Gus in Better Call Saul is American" → "Gus Better Call Saul actor nationality"\n'
+    '- "Oman is located in Africa" → "Oman location Africa"\n\n'
+    'Claim: "{claim}"'
 )
 
 
