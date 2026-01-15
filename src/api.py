@@ -93,52 +93,11 @@ def get_or_scrape_article(article_query: str, top_n_urls: int = 1, source: str =
     print(f"[DEBUG] Searching {source} with query: '{source_query}'")
     urls = get_first_n_results_urls(source_query, top_n_urls)
     
-    # If no results and it's a news source, try a simpler query without site restriction
+    # For news sources, if site-restricted search fails, don't fall back to general search
+    # General searches return Wikipedia results which we then have to filter out anyway
+    # This is inefficient and confusing - better to just fail cleanly if the source has no results
     if not urls and source in ["ap", "reuters", "guardian"]:
-        print(f"[DEBUG] No results with site restriction, trying simpler query: '{article_query}'")
-        urls = get_first_n_results_urls(article_query, top_n_urls * 5)  # Get more results to filter
-        if urls:
-            # Log what URLs we got
-            print(f"[DEBUG] Found {len(urls)} URLs from Google Search, checking domains...")
-            for i, url in enumerate(urls[:5], 1):  # Show first 5
-                print(f"[DEBUG]   URL {i}: {url}")
-            
-            # Filter URLs to match the source domain (try multiple domain variations)
-            domain_map = {
-                "ap": ["apnews.com", "ap.org", "apnews"],
-                "reuters": ["reuters.com", "reuters"], 
-                "guardian": ["theguardian.com", "guardian.co.uk", "guardian.com"]
-            }
-            target_domains = domain_map.get(source, [])
-            if target_domains:
-                filtered_urls = []
-                for url in urls:
-                    for domain in target_domains:
-                        if domain.lower() in url.lower():
-                            filtered_urls.append(url)
-                            break  # Found a match, no need to check other domains
-                
-                if filtered_urls:
-                    print(f"[DEBUG] Found {len(filtered_urls)} URLs matching {source} domain after filtering")
-                    urls = filtered_urls[:top_n_urls]
-                else:
-                    print(f"[DEBUG] No URLs matched {source} domains ({target_domains}) after filtering")
-                    # Try one more thing: search with domain name in query
-                    domain_query = f"{article_query} {target_domains[0]}"
-                    print(f"[DEBUG] Trying query with domain name: '{domain_query}'")
-                    domain_urls = get_first_n_results_urls(domain_query, top_n_urls * 3)
-                    if domain_urls:
-                        # Filter again
-                        filtered_urls = [url for url in domain_urls if any(d.lower() in url.lower() for d in target_domains)]
-                        if filtered_urls:
-                            print(f"[DEBUG] Found {len(filtered_urls)} URLs with domain in query")
-                            urls = filtered_urls[:top_n_urls]
-                        else:
-                            urls = None
-                    else:
-                        urls = None
-            else:
-                urls = None
+        print(f"[DEBUG] No results with site restriction for {source}. Not attempting general search to avoid irrelevant results.")
     
     if not urls:
         print(f"[DEBUG] No URLs found for {source} with query: '{source_query}'")
@@ -146,6 +105,30 @@ def get_or_scrape_article(article_query: str, top_n_urls: int = 1, source: str =
     
     url = urls[0]
     print(f"[DEBUG] Found URL for {source}: {url}")
+    
+    # Final validation: ensure URL matches the source domain (defense in depth)
+    if source in ["ap", "reuters", "guardian"]:
+        from urllib.parse import urlparse
+        try:
+            parsed = urlparse(url)
+            hostname = parsed.netloc.lower()
+            if ':' in hostname:
+                hostname = hostname.split(':')[0]
+            
+            domain_map = {
+                "ap": ["apnews.com", "ap.org"],
+                "reuters": ["reuters.com"], 
+                "guardian": ["theguardian.com", "guardian.co.uk", "guardian.com"]
+            }
+            target_domains = domain_map.get(source, [])
+            is_valid = any(hostname == d.lower() or hostname.endswith('.' + d.lower()) for d in target_domains)
+            
+            if not is_valid:
+                print(f"[WARNING] URL {url} does not match {source} domain. Rejecting.")
+                return None, None, None
+        except Exception as e:
+            print(f"[WARNING] Error validating URL domain: {e}")
+            return None, None, None
     
     # Create cache key that includes source
     cache_key = f"{source}:{article_query}"
