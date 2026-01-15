@@ -77,3 +77,6 @@ __pycache__
 dist/
 dist-ssr/
 *.local
+
+# Accidental files created by shell redirection issues
+=*

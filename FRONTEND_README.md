@@ -8,7 +8,29 @@ This guide explains how to run the React frontend for The Truth Machine.
 2. **Python 3.8+** with dependencies installed
 3. **Backend API** running (see below)
 
-## Setup
+## Quick Start (Automated)
+
+**Easiest way to start both backend and frontend:**
+
+```bash
+# Make the script executable (first time only)
+chmod +x start.sh
+
+# Start both servers
+./start.sh
+```
+
+This will automatically:
+
+- Check and install dependencies if needed
+- Start the backend on `http://localhost:8000`
+- Start the frontend on `http://localhost:5173`
+- Show logs from both servers
+- Handle cleanup when you press Ctrl+C
+
+## Manual Setup
+
+If you prefer to run servers separately:
 
 ### 1. Install Frontend Dependencies
 
@@ -27,13 +49,6 @@ pip install -r requirements.txt
 In one terminal:
 
 ```bash
-# Make the script executable (first time only)
-chmod +x start_api.sh
-
-# Start the API server
-./start_api.sh
-
-# Or manually:
 python -m uvicorn src.api:app --reload --host 0.0.0.0 --port 8000
 ```
 
@@ -78,4 +93,3 @@ src/
 - `POST /api/factcheck` - Process a query and return fact-checking results
   - Request body: `{ "query": "your query here", "top_n_urls": 1 }`
   - Response: Structured fact-checking data with claims, prerequisites, and validation results
-
