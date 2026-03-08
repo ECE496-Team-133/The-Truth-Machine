@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import ValidationBlock from './ValidationBlock'
 import './ClaimNode.css'
 
-function ClaimNode({ claim, index, isProcessing = false, currentStep = null }) {
+function ClaimNode({ claim, index, isProcessing = false, currentStep = null, sourceWeights = {} }) {
   // Determine which prerequisite/additional info is currently being processed
   let currentPrereqIndex = null
   let currentInfoIndex = null
@@ -45,6 +45,7 @@ function ClaimNode({ claim, index, isProcessing = false, currentStep = null }) {
                       validation={prereq.validation || { status: 'pending' }}
                       type="prerequisite"
                       isCurrentlyProcessing={currentPrereqIndex === actualIndex}
+                      sourceWeights={sourceWeights}
                     />
                   )
                 })}
@@ -98,6 +99,7 @@ function ClaimNode({ claim, index, isProcessing = false, currentStep = null }) {
               }}
               type="final-claim"
               isCurrentlyProcessing={isProcessing && currentStep?.type === 'final_claim'}
+              sourceWeights={sourceWeights}
             />
           </div>
         )}

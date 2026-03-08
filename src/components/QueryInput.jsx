@@ -1,137 +1,114 @@
-import React, { useState } from 'react'
-import { motion } from 'framer-motion'
+import React, { useState, useRef, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import './QueryInput.css'
 
 function QueryInput({ onSubmit, onRunLocally, disabled, localConfig }) {
   const [query, setQuery] = useState('')
-  const [sources, setSources] = useState({
-    wikipedia: true,
-    ap: false,
-    reuters: false,
-    guardian: false
-  })
+  const textareaRef = useRef(null)
 
-  const handleSourceChange = (source) => {
-    setSources(prev => ({
-      ...prev,
-      [source]: !prev[source]
-    }))
-  }
-
-  const getSelectedSources = () => {
-    return Object.entries(sources)
-      .filter(([_, selected]) => selected)
-      .map(([source, _]) => source)
-  }
+  // Auto-resize textarea
+  useEffect(() => {
+    const ta = textareaRef.current
+    if (!ta) return
+    ta.style.height = 'auto'
+    ta.style.height = Math.min(ta.scrollHeight, 160) + 'px'
+  }, [query])
 
   const handleSubmit = (e) => {
-    e.preventDefault()
+    e?.preventDefault()
     if (query.trim() && !disabled) {
-      const selectedSources = getSelectedSources()
-      if (selectedSources.length === 0) {
-        alert('Please select at least one source')
-        return
-      }
-      onSubmit(query.trim(), selectedSources)
+      onSubmit(query.trim())
+      setQuery('')
     }
   }
 
   const handleRunLocally = () => {
     if (query.trim() && !disabled) {
-      const selectedSources = getSelectedSources()
-      if (selectedSources.length === 0) {
-        alert('Please select at least one source')
-        return
-      }
-      onRunLocally(query.trim(), selectedSources)
+      onRunLocally(query.trim())
+      setQuery('')
     }
   }
 
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSubmit()
+    }
+  }
+
+  const isLocal = localConfig?.enabled && localConfig?.ollama_running && localConfig?.model_ready
+  const canSubmit = query.trim().length > 0 && !disabled
+
   return (
-    <motion.form
-      className="query-input-container"
-      onSubmit={handleSubmit}
-      initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-    >
-      <div className="query-input-wrapper">
-        <input
-          type="text"
+    <form className="chat-input-form" onSubmit={handleSubmit}>
+      <div className={`chat-input-box ${disabled ? 'is-disabled' : ''}`}>
+        <textarea
+          ref={textareaRef}
+          className="chat-textarea"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Enter your query to fact-check..."
-          className="query-input"
+          onKeyDown={handleKeyDown}
+          placeholder="Enter a claim to fact-check…"
           disabled={disabled}
+          rows={1}
         />
-        <motion.button
-          type="submit"
-          className="query-submit-button"
-          disabled={disabled || !query.trim()}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-        >
-          {disabled ? 'Checking...' : 'Check'}
-        </motion.button>
-        <motion.button
-          type="button"
-          className="query-submit-button query-local-button"
-          disabled={disabled || !query.trim()}
-          onClick={handleRunLocally}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-        >
-          {disabled ? 'Checking...' : (localConfig?.enabled && localConfig?.ollama_running) ? 'Run Locally' : 'Set Up Local'}
-        </motion.button>
-      </div>
-      <div className="source-selection">
-        <label className="source-label">Sources:</label>
-        <div className="source-checkboxes">
-          <label className="source-checkbox">
-            <input
-              type="checkbox"
-              checked={sources.wikipedia}
-              onChange={() => handleSourceChange('wikipedia')}
-              disabled={disabled}
-            />
-            <span>Wikipedia</span>
-          </label>
-          <label className="source-checkbox">
-            <input
-              type="checkbox"
-              checked={sources.ap}
-              onChange={() => handleSourceChange('ap')}
-              disabled={disabled}
-            />
-            <span>AP</span>
-          </label>
-          <label className="source-checkbox">
-            <input
-              type="checkbox"
-              checked={sources.reuters}
-              onChange={() => handleSourceChange('reuters')}
-              disabled={disabled}
-            />
-            <span>Reuters</span>
-          </label>
-          <label className="source-checkbox">
-            <input
-              type="checkbox"
-              checked={sources.guardian}
-              onChange={() => handleSourceChange('guardian')}
-              disabled={disabled}
-            />
-            <span>The Guardian</span>
-          </label>
-        </div>
-        <div className="source-note">
-          <span className="note-icon">ℹ️</span>
-          <span>Entity detection and basic factual queries are automatically checked via Wikipedia, even if not selected above.</span>
+
+        <div className="chat-input-actions">
+          {/* Local run button — only shown when local mode is available */}
+          {localConfig && (
+            <AnimatePresence>
+              {isLocal && (
+                <motion.button
+                  key="local-btn"
+                  type="button"
+                  className="action-btn local-btn"
+                  onClick={handleRunLocally}
+                  disabled={!canSubmit}
+                  title="Run fact-check locally with Ollama"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  whileHover={canSubmit ? { scale: 1.08 } : {}}
+                  whileTap={canSubmit ? { scale: 0.94 } : {}}
+                >
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <path d="M7 1.5L12 7L7 12.5M2 7h10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  Local
+                </motion.button>
+              )}
+            </AnimatePresence>
+          )}
+
+          {/* Send button */}
+          <motion.button
+            type="submit"
+            className={`action-btn send-btn ${canSubmit ? 'send-ready' : ''}`}
+            disabled={!canSubmit}
+            title={disabled ? 'Checking…' : 'Send (Enter)'}
+            whileHover={canSubmit ? { scale: 1.08 } : {}}
+            whileTap={canSubmit ? { scale: 0.92 } : {}}
+          >
+            {disabled ? (
+              <motion.svg
+                width="16" height="16" viewBox="0 0 16 16" fill="none"
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+              >
+                <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="2" strokeDasharray="30" strokeDashoffset="10" strokeLinecap="round"/>
+              </motion.svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M8 13V3M3.5 7.5L8 3L12.5 7.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            )}
+          </motion.button>
         </div>
       </div>
-    </motion.form>
+
+      <p className="chat-input-hint">Press Enter to send · Shift+Enter for new line</p>
+    </form>
   )
 }
 
 export default QueryInput
-

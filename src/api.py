@@ -11,6 +11,8 @@ import asyncio
 import json
 from contextlib import asynccontextmanager
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import threading
+import queue as _queue
 
 from src.utils.config import SETTINGS  # noqa: F401
 from src.utils.claims import (
@@ -57,7 +59,7 @@ Scraped_Articles_Cache: Dict[str, tuple[str, str]] = {}
 class QueryRequest(BaseModel):
     query: str
     top_n_urls: int = 1
-    sources: list[str] = ["wikipedia"]  # List of sources: "wikipedia", "ap", "reuters", "guardian"
+    sources: list[str] = ["wikipedia"]  # e.g. "wikipedia","ap","reuters","guardian","bbc","nytimes","washingtonpost","cnn","bloomberg","ft","aljazeera","cnbc","wsj","politico","economist"
     local: bool = False
 
 
@@ -69,8 +71,9 @@ class ValidationStatus(BaseModel):
     article_url: Optional[str] = None
     link: Optional[str] = None
     error: Optional[str] = None
-    source: Optional[str] = None  # "wikipedia", "ap", "reuters", "guardian"
+    source: Optional[str] = None  # winning source key, e.g. "wikipedia", "ap", "bbc", etc.
     sources_checked: Optional[list[str]] = None  # List of sources that were checked
+    per_source_results: Optional[list] = None  # [{source, label, evidence, url, link}] for all sources checked
 
 
 class PrerequisiteNode(BaseModel):
@@ -116,36 +119,45 @@ def get_or_scrape_article(article_query: str, top_n_urls: int = 1, source: str =
     print(f"[DEBUG] Searching {source} with query: '{source_query}'")
     urls = get_first_n_results_urls(source_query, top_n_urls)
     
+    # Domain map for URL validation (defense-in-depth against off-domain CSE results)
+    _NEWS_DOMAIN_MAP: dict[str, list[str]] = {
+        "ap":             ["apnews.com", "ap.org"],
+        "reuters":        ["reuters.com"],
+        "guardian":       ["theguardian.com", "guardian.co.uk", "guardian.com"],
+        "bbc":            ["bbc.com", "bbc.co.uk"],
+        "nytimes":        ["nytimes.com"],
+        "washingtonpost": ["washingtonpost.com"],
+        "cnn":            ["cnn.com"],
+        "bloomberg":      ["bloomberg.com"],
+        "ft":             ["ft.com"],
+        "aljazeera":      ["aljazeera.com", "aljazeera.net"],
+        "cnbc":           ["cnbc.com"],
+        "wsj":            ["wsj.com"],
+        "politico":       ["politico.com", "politico.eu"],
+        "economist":      ["economist.com"],
+    }
+
     # For news sources, if site-restricted search fails, don't fall back to general search
-    # General searches return Wikipedia results which we then have to filter out anyway
-    # This is inefficient and confusing - better to just fail cleanly if the source has no results
-    if not urls and source in ["ap", "reuters", "guardian"]:
+    if not urls and source in _NEWS_DOMAIN_MAP:
         print(f"[DEBUG] No results with site restriction for {source}. Not attempting general search to avoid irrelevant results.")
-    
+
     if not urls:
         print(f"[DEBUG] No URLs found for {source} with query: '{source_query}'")
         return None, None, None
-    
+
     url = urls[0]
     print(f"[DEBUG] Found URL for {source}: {url}")
-    
-    # Final validation: ensure URL matches the source domain (defense in depth)
-    if source in ["ap", "reuters", "guardian"]:
+
+    # Final validation: ensure URL matches the source domain
+    if source in _NEWS_DOMAIN_MAP:
         from urllib.parse import urlparse
         try:
             parsed = urlparse(url)
             hostname = parsed.netloc.lower()
             if ':' in hostname:
                 hostname = hostname.split(':')[0]
-            
-            domain_map = {
-                "ap": ["apnews.com", "ap.org"],
-                "reuters": ["reuters.com"], 
-                "guardian": ["theguardian.com", "guardian.co.uk", "guardian.com"]
-            }
-            target_domains = domain_map.get(source, [])
+            target_domains = _NEWS_DOMAIN_MAP.get(source, [])
             is_valid = any(hostname == d.lower() or hostname.endswith('.' + d.lower()) for d in target_domains)
-            
             if not is_valid:
                 print(f"[WARNING] URL {url} does not match {source} domain. Rejecting.")
                 return None, None, None
@@ -224,25 +236,31 @@ def get_articles_from_sources(
             print(f"[INFO] Entity detection query detected. Adding Wikipedia as fallback source.")
             effective_sources.append("wikipedia")
     
-    # Optimize query for news sources if we have news sources
-    news_sources = [s for s in effective_sources if s in ["ap", "reuters", "guardian"]]
+    # All supported non-Wikipedia sources (used for query optimisation and domain checks)
+    ALL_NEWS_SOURCES = {
+        "ap", "reuters", "guardian", "bbc", "nytimes", "washingtonpost",
+        "cnn", "bloomberg", "ft", "aljazeera", "cnbc", "wsj", "politico", "economist",
+    }
+
+    # Optimize query for news sources if we have any news sources selected
+    news_sources = [s for s in effective_sources if s in ALL_NEWS_SOURCES]
     news_query = None
-    
+
     if news_sources:
         print(f"[INFO] Optimizing query for news sources: '{base_query}'")
         news_query = get_query_for_news(base_query)
         print(f"[INFO] Optimized news query: '{base_query}' → '{news_query}'")
-    
+
     for source in effective_sources:
         try:
             # Key behavior:
             # - Wikipedia: use LLM-produced wikipedia_query (better hit-rate for wiki pages)
-            # - News sources: use optimized news_query (better hit-rate for AP/Reuters/Guardian)
+            # - News sources: use optimized news_query (better headline/keyword match)
             query_for_source = base_query
             if source == "wikipedia" and wikipedia_query:
                 query_for_source = wikipedia_query
                 print(f"[INFO] Using Wikipedia-optimized query for {source}: '{query_for_source}'")
-            elif source in ["ap", "reuters", "guardian"]:
+            elif source in ALL_NEWS_SOURCES:
                 if news_query:
                     query_for_source = news_query
                     print(f"[INFO] Using news-optimized query for {source}: '{query_for_source}'")
@@ -297,88 +315,116 @@ def _process_single_prerequisite(
     base_query = prerequisite
     prereq_node.validation.article_query = wikipedia_query or base_query
     
-    if progress_callback:
-        progress_callback("prerequisite", f"Fetching articles from selected sources...", {
-            "index": index,
-            "article_query": prereq_node.validation.article_query,
-            "sources_checked": sources,
-            "status": "fetching_article"
-        })
-    
-    # Get articles from multiple sources
-    # Note: get_articles_from_sources may add Wikipedia as fallback for basic facts
-    articles = get_articles_from_sources(base_query, sources, top_n_urls, wikipedia_query=wikipedia_query)
-    # Track all sources that were actually checked (including fallback Wikipedia)
-    sources_actually_checked = list(set(sources + (["wikipedia"] if any("wikipedia" in str(a[2]) for a in articles) else [])))
-    prereq_node.validation.sources_checked = sources_actually_checked
-    
-    if not articles:
-        sources_tried = ", ".join([s.capitalize() for s in sources])
-        prereq_node.validation.status = "failed"
-        prereq_node.validation.error = f"Failed to find or scrape articles from any source. Sources checked: {sources_tried}"
-        if progress_callback:
-            progress_callback("prerequisite", f"Failed to scrape articles for prerequisite {index}", {
-                "index": index,
-                "status": "failed",
-                "sources_checked": sources
-            })
-        return (index - 1, prereq_node)
-    
-    # Try to fact-check from each source until we get a result
+    # Prerequisites use a serial search: try sources one at a time and stop the moment
+    # any source confirms True. This avoids unnecessary fetches and LLM calls.
+    # A prerequisite passes if ONE source says True; it fails only when all tried sources
+    # return False (or no article could be fetched at all).
+    _ALL_NEWS = {
+        "ap","reuters","guardian","bbc","nytimes","washingtonpost",
+        "cnn","bloomberg","ft","aljazeera","cnbc","wsj","politico","economist",
+    }
+    has_news_sources = any(s in _ALL_NEWS for s in sources)
+    news_q = get_query_for_news(base_query) if has_news_sources else None
+
     result = None
     best_url = None
     best_source = None
-    
-    for url, content, source_name in articles:
+    found_sources_list = []
+    skipped_sources_list = []
+
+    for source in sources:
+        query_for_source = base_query
+        if source == "wikipedia" and wikipedia_query:
+            query_for_source = wikipedia_query
+        elif source in _ALL_NEWS and news_q:
+            query_for_source = news_q
+
         if progress_callback:
-            progress_callback("prerequisite", f"Fact-checking prerequisite {index} from {source_name}...", {
+            progress_callback("prerequisite", f"Checking {source} for prerequisite {index}…", {
                 "index": index,
                 "status": "factchecking",
-                "source": source_name
+                "source": source,
             })
-        
+
+        url, content, src_name = get_or_scrape_article(query_for_source, top_n_urls, source)
+
+        if not url or not content:
+            skipped_sources_list.append(source)
+            # Emit updated source status so ThinkingPanel tag turns to skipped
+            if progress_callback:
+                progress_callback("prerequisite", f"Prerequisite {index} — {source}: no article", {
+                    "index": index,
+                    "status": "sources_fetched",
+                    "found_sources": list(found_sources_list),
+                    "skipped_sources": list(skipped_sources_list),
+                })
+            continue
+
+        found_sources_list.append(src_name)
+        if progress_callback:
+            progress_callback("prerequisite", f"Prerequisite {index} — {src_name}: article found", {
+                "index": index,
+                "status": "article_found",
+                "source": src_name,
+            })
+
         check_result = find_answer_in_article(content, prerequisite)
-        if check_result:
+        if check_result and check_result.label == "True":
             result = check_result
             best_url = url
-            best_source = source_name
-            # If we get a definitive answer, use it
-            if check_result.label in ["True", "False"]:
-                break
-    
+            best_source = src_name
+            break  # Confirmed True — no need to check further sources
+
+        if check_result and check_result.label == "False" and result is None:
+            # Store as fallback; keep looking for a True in subsequent sources
+            result = check_result
+            best_url = url
+            best_source = src_name
+
+    # Emit final sources summary for ThinkingPanel tags
+    sources_actually_checked = found_sources_list + skipped_sources_list
+    prereq_node.validation.sources_checked = sources_actually_checked
+    if progress_callback:
+        progress_callback("prerequisite", f"Sources checked for prerequisite {index}", {
+            "index": index,
+            "status": "sources_fetched",
+            "found_sources": found_sources_list,
+            "skipped_sources": skipped_sources_list,
+        })
+
     if not result:
         prereq_node.validation.status = "failed"
         prereq_node.validation.error = "Failed to fact-check prerequisite from any source"
         if progress_callback:
             progress_callback("prerequisite", f"Failed to fact-check prerequisite {index}", {
                 "index": index,
-                "status": "failed"
+                "status": "failed",
             })
         return (index - 1, prereq_node)
-    
-    # Set validation results
+
+    # Set validation results (no per_source_results for prerequisites — weights only apply to final claim)
     prereq_node.validation.label = result.label
     prereq_node.validation.evidence = result.evidence
     prereq_node.validation.article_url = best_url
     prereq_node.validation.source = best_source
     prereq_node.validation.link = build_text_fragment_link(best_url, result.evidence) if best_url else None
-    
+
     if result.label == "True":
         prereq_node.validation.status = "validated"
         if progress_callback:
-            progress_callback("prerequisite", f"Prerequisite {index} validated: {result.label}", {
+            progress_callback("prerequisite", f"Prerequisite {index} validated", {
                 "index": index,
                 "status": "validated",
-                "label": result.label
+                "label": result.label,
             })
     else:
         prereq_node.validation.status = "failed"
-        prereq_node.validation.error = f"Prerequisite validation failed: {result.label}"
+        prereq_node.validation.error = "Prerequisite validation failed: no source confirmed True"
         if progress_callback:
-            progress_callback("prerequisite", f"Prerequisite {index} failed: {result.label}", {
+            progress_callback("prerequisite", f"Prerequisite {index} failed", {
                 "index": index,
                 "status": "failed",
-                "label": result.label
+                "label": result.label,
             })
     
     return (index - 1, prereq_node)
@@ -767,27 +813,73 @@ def process_claim_with_plan_streaming(
                 if progress_callback:
                     progress_callback("final_claim", "Fact-checking final claim...", {"status": "factchecking"})
                 
-                # Try to fact-check from each source
+                # Emit which sources found articles vs which were skipped
+                final_found_sources = [a[2] for a in final_articles]
+                final_skipped_sources = [s for s in sources_actually_checked if s not in final_found_sources]
+                if progress_callback:
+                    progress_callback("final_claim", "Sources loaded for final claim", {
+                        "status": "sources_fetched",
+                        "found_sources": final_found_sources,
+                        "skipped_sources": final_skipped_sources,
+                    })
+
+                # Fact-check from ALL sources, collect per-source results
+                final_per_source = []
                 final_result = None
                 best_final_url = None
                 best_final_source = None
-                
+
                 for url, content, source_name in final_articles:
                     if progress_callback:
                         progress_callback("final_claim", f"Fact-checking final claim from {source_name}...", {
                             "status": "factchecking",
                             "source": source_name
                         })
-                    
+
                     check_result = find_answer_in_article(content, final_claim)
-                    if check_result:
-                        final_result = check_result
-                        best_final_url = url
-                        best_final_source = source_name
-                        # If we get a definitive answer, use it
-                        if check_result.label in ["True", "False"]:
-                            break
-                
+                    if check_result and check_result.label in ["True", "False"]:
+                        link = build_text_fragment_link(url, check_result.evidence) if url and check_result.evidence else url
+                        final_per_source.append({
+                            "source": source_name,
+                            "label": check_result.label,
+                            "evidence": check_result.evidence or "",
+                            "url": url,
+                            "link": link,
+                        })
+                        if final_result is None:
+                            final_result = check_result
+                            best_final_url = url
+                            best_final_source = source_name
+                        # Emit live per-source verdict
+                        if progress_callback:
+                            progress_callback("final_claim", f"Final claim — {source_name}: {check_result.label}", {
+                                "status": "source_result",
+                                "source": source_name,
+                                "label": check_result.label,
+                            })
+
+                # Append skipped entries so the frontend can show why sources are absent.
+                # Sources with no article found:
+                for src in final_skipped_sources:
+                    final_per_source.append({
+                        "source": src,
+                        "label": "Skipped",
+                        "evidence": "",
+                        "url": None,
+                        "link": None,
+                    })
+                # Sources whose article was fetched but yielded no True/False verdict:
+                sources_with_verdict = {r["source"] for r in final_per_source if r["label"] != "Skipped"}
+                for _url, _content, src_name in final_articles:
+                    if src_name not in sources_with_verdict:
+                        final_per_source.append({
+                            "source": src_name,
+                            "label": "Skipped",
+                            "evidence": "",
+                            "url": None,
+                            "link": None,
+                        })
+
                 if final_result:
                     print("\n=== Final Answer ===")
                     print(f"Label: {final_result.label}")
@@ -796,18 +888,20 @@ def process_claim_with_plan_streaming(
                     print("\n=== LINK TO RESPONSE ===")
                     link = build_text_fragment_link(best_final_url, final_result.evidence)
                     print(link)
-                    
+
                     final_validation.status = "validated"
                     final_validation.label = final_result.label
                     final_validation.evidence = final_result.evidence
                     final_validation.article_url = best_final_url
                     final_validation.source = best_final_source
                     final_validation.link = link
+                    final_validation.per_source_results = final_per_source
                     if progress_callback:
                         progress_callback("final_claim", f"Final claim validated: {final_result.label}", {
                             "status": "validated",
                             "label": final_result.label,
-                            "source": best_final_source
+                            "source": best_final_source,
+                            "per_source_results": final_per_source,
                         })
                 else:
                     sources_tried = ", ".join([s.capitalize() for s in sources])
@@ -826,11 +920,13 @@ def process_claim_with_plan_streaming(
                 error_msg = f"Failed to find or scrape articles from any source. Sources checked: {sources_tried}"
                 
                 # Add query information - show what was actually searched
-                news_sources_in_list = [s for s in sources_actually_checked if s in ["ap", "reuters", "guardian"]]
+                _all_news = {"ap","reuters","guardian","bbc","nytimes","washingtonpost","cnn","bloomberg","ft","aljazeera","cnbc","wsj","politico","economist"}
+                news_sources_in_list = [s for s in sources_actually_checked if s in _all_news]
                 if news_sources_in_list:
                     # Get the optimized news query that was used
                     news_query_used = get_query_for_news(final_claim)
-                    error_msg += f"\nNews sources (AP, Reuters, Guardian) searched with: '{news_query_used} site:...'"
+                    news_names = ", ".join(s.upper() for s in news_sources_in_list)
+                    error_msg += f"\nNews sources ({news_names}) searched with: '{news_query_used} site:...'"
                     if "wikipedia" in sources_actually_checked and final_article_query:
                         error_msg += f"\nWikipedia searched with: '{final_article_query}'"
                 elif final_article_query:
@@ -1043,48 +1139,47 @@ def generate_progress_stream(query: str, top_n_urls: int = 1, sources: list[str]
         
         yield f"data: {json.dumps({'type': 'step', 'message': f'Found {len(claims)} claim(s) to process', 'data': {'claim_count': len(claims)}})}\n\n"
         
-        # Process each claim
+        # Process each claim — use a queue so progress events stream in real time
         claim_nodes = []
+        _SENTINEL = object()
+
         for claim_idx, claim in enumerate(claims, 1):
             print(f"\n{'#' * 60}")
             print(f"Processing Claim {claim_idx}/{len(claims)}")
             print(f"{'#' * 60}")
             yield f"data: {json.dumps({'type': 'claim', 'message': f'Processing claim {claim_idx}/{len(claims)}', 'data': {'claim_index': claim_idx, 'total_claims': len(claims), 'claim_text': claim}})}\n\n"
-            
-            # Create a generator that yields updates and processes the claim
-            def process_claim_generator():
-                """Generator that processes claim and yields updates."""
-                progress_updates = []
-                
+
+            event_queue: _queue.Queue = _queue.Queue()
+
+            def _worker(claim=claim, claim_idx=claim_idx, eq=event_queue):
                 def claim_progress_callback(update_type: str, message: str, data: Optional[Dict] = None):
-                    update = {
+                    eq.put({
                         'type': update_type,
                         'message': message,
                         'data': {**(data or {}), 'claim_index': claim_idx, 'claim_text': claim}
-                    }
-                    progress_updates.append(update)
-                
-                # Process the claim (this runs synchronously)
+                    })
+
                 claim_node = process_claim_with_plan_streaming(
-                    claim, 
+                    claim,
                     top_n_urls,
                     sources,
-                    progress_callback=claim_progress_callback
+                    progress_callback=claim_progress_callback,
                 )
-                
-                # Yield all progress updates, then the result
-                for update in progress_updates:
-                    yield update
-                
-                yield {'type': 'claim_complete', 'claim_node': claim_node}
-            
-            # Process claim and yield updates as they come
-            for update in process_claim_generator():
-                if 'claim_node' in update:
-                    claim_nodes.append(update['claim_node'])
-                else:
-                    yield f"data: {json.dumps(update)}\n\n"
-            
+                eq.put(_SENTINEL)
+                eq.put(claim_node)
+
+            t = threading.Thread(target=_worker, daemon=True)
+            t.start()
+
+            while True:
+                item = event_queue.get()
+                if item is _SENTINEL:
+                    claim_node = event_queue.get()
+                    claim_nodes.append(claim_node)
+                    break
+                yield f"data: {json.dumps(item)}\n\n"
+
+            t.join()
             yield f"data: {json.dumps({'type': 'claim', 'message': f'Claim {claim_idx} completed', 'data': {'claim_index': claim_idx, 'status': 'completed'}})}\n\n"
         
         total_time = time.time() - start_time

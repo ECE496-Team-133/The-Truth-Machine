@@ -1,18 +1,12 @@
 .claim-node {
-  background: var(--glass-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--glass-border);
-  border-radius: 20px;
-  padding: 32px;
-  box-shadow: 
-    0 8px 32px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  transition: all 0.3s ease;
-  position: relative;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
   overflow: hidden;
+  position: relative;
 }
 
+/* Gradient top stripe */
 .claim-node::before {
   content: '';
   position: absolute;
@@ -20,99 +14,75 @@
   left: 0;
   right: 0;
   height: 2px;
-  background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary), var(--accent-primary));
-  background-size: 200% 100%;
-  animation: gradient-flow 3s ease infinite;
-}
-
-@keyframes gradient-flow {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
-}
-
-.claim-node:hover {
-  transform: translateY(-4px);
-  box-shadow: 
-    0 12px 40px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.15),
-    0 0 0 1px rgba(0, 255, 136, 0.2);
+  background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
 }
 
 .claim-header {
-  margin-bottom: 28px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid var(--border-color);
-  overflow: visible;
-  word-wrap: break-word;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .claim-title {
-  font-size: 1.5rem;
-  background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  margin-bottom: 12px;
-  font-weight: 700;
-  white-space: nowrap;
-  word-break: keep-all;
-  overflow: visible;
-  letter-spacing: -0.01em;
+  margin-bottom: 6px;
 }
 
 .claim-text {
-  font-size: 1.1rem;
-  color: var(--text-secondary);
-  line-height: 1.7;
-  font-weight: 400;
+  font-size: 0.97rem;
+  color: var(--text-primary);
+  line-height: 1.55;
+  font-weight: 500;
 }
 
 .claim-content {
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 0;
+}
+
+/* Sections */
+.prerequisites-section,
+.additional-info-section,
+.final-claim-section {
+  padding: 14px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.final-claim-section {
+  border-bottom: none;
+  background: rgba(0, 255, 136, 0.02);
 }
 
 .section-title {
-  font-size: 1.25rem;
-  color: var(--text-primary);
-  margin-bottom: 20px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-tertiary);
+  margin-bottom: 10px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .section-title::before {
   content: '';
-  width: 4px;
-  height: 20px;
+  width: 3px;
+  height: 12px;
   background: linear-gradient(180deg, var(--accent-primary), var(--accent-secondary));
   border-radius: 2px;
+  flex-shrink: 0;
 }
 
 .blocks-container {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 8px;
 }
-
-.prerequisites-section,
-.additional-info-section,
-.final-claim-section {
-  padding: 20px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid var(--border-color);
-  border-radius: 16px;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-}
-

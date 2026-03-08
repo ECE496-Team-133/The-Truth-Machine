@@ -1,87 +1,201 @@
+/* ─── Root layout ─── */
 .app {
-  width: 100%;
-  min-height: 100vh;
   display: flex;
+  height: 100vh;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ─── Main content area ─── */
+.main-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  z-index: 1;
+}
+
+/* AnimatePresence wrapper fills remaining height below TopBar */
+.main-content > div[style],
+.main-content > .welcome-view,
+.main-content > .chat-view {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ─── Welcome view ─── */
+.welcome-view {
+  flex: 1;
+  display: flex;
+  align-items: center;
   justify-content: center;
-  align-items: flex-start;
   padding: 40px 20px;
-  position: relative;
-  z-index: 1;
+  overflow-y: auto;
 }
 
-.app-container {
+.welcome-center {
   width: 100%;
-  max-width: 1400px;
-  position: relative;
-  z-index: 1;
-}
-
-.app-header {
-  text-align: center;
-  margin-bottom: 60px;
-  position: relative;
-}
-
-.app-header h1 {
-  font-size: clamp(2.5rem, 5vw, 4rem);
-  margin-bottom: 16px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  position: relative;
-  display: inline-block;
-}
-
-.app-header h1::after {
-  content: '🔍';
-  display: inline-block;
-  margin-left: 16px;
-  filter: drop-shadow(0 0 10px rgba(0, 255, 136, 0.5));
-  animation: float 3s ease-in-out infinite;
-}
-
-@keyframes float {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
-}
-
-.app-header p {
-  font-size: clamp(1rem, 2vw, 1.25rem);
-  color: var(--text-secondary);
-  font-weight: 400;
-  line-height: 1.6;
-  max-width: 600px;
-  margin: 0 auto;
-}
-
-.header-mode-indicator {
-  display: flex;
-  justify-content: center;
-  margin-top: 16px;
-}
-
-.loading-container {
+  max-width: 680px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 60px 20px;
+  gap: 36px;
+}
+
+.welcome-title {
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
   color: var(--text-primary);
+  margin: 0;
+  text-align: center;
 }
 
-.loading-container p {
-  margin-top: 20px;
-  font-size: 1.1rem;
-  color: var(--text-secondary);
+.welcome-input {
+  width: 100%;
 }
 
+/* ─── Chat view ─── */
+.chat-view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* (TopBar component handles its own styles) */
+
+/* Scrollable results */
+.chat-results {
+  flex: 1;
+  overflow-y: auto;
+  padding: 28px 28px 20px;
+}
+
+.chat-results::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chat-results::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chat-results::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+/* Input bar at the bottom of chat */
+.chat-input-bar {
+  flex-shrink: 0;
+  padding: 16px 28px 24px;
+  border-top: 1px solid var(--border-color);
+  background: rgba(10, 10, 10, 0.7);
+  backdrop-filter: blur(10px);
+}
+
+/* ─── Chat message list ─── */
+.chat-messages-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding-bottom: 12px;
+}
+
+/* Shared message row */
+.chat-msg {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  width: 100%;
+}
+
+/* ── User bubble (right-aligned) ── */
+.user-msg {
+  justify-content: flex-end;
+}
+
+.user-bubble {
+  max-width: min(72%, 720px);
+  background: rgba(0, 255, 136, 0.08);
+  border: 1px solid rgba(0, 255, 136, 0.22);
+  border-radius: 20px 20px 4px 20px;
+  padding: 13px 20px;
+  position: relative;
+}
+
+.user-bubble p {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--text-primary);
+  line-height: 1.55;
+  font-weight: 400;
+}
+
+/* ── AI bubble (left-aligned with avatar) ── */
+.ai-msg {
+  justify-content: flex-start;
+  align-items: flex-start;
+}
+
+.ai-avatar {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  border-radius: 50%;
+  background: rgba(0, 255, 136, 0.08);
+  border: 1px solid rgba(0, 255, 136, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  margin-top: 4px;
+}
+
+.ai-bubble {
+  flex: 1;
+  min-width: 0;
+  max-width: calc(100% - 48px);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px 20px 20px 20px;
+  padding: 18px 22px;
+}
+
+/* Result footer (time taken) */
+.result-footer {
+  margin-top: 16px;
+  font-size: 0.78rem;
+  color: var(--text-tertiary);
+  text-align: right;
+  border-top: 1px solid var(--border-color);
+  padding-top: 10px;
+}
+
+/* ─── Error ─── */
+.error-container {
+  background: rgba(255, 107, 107, 0.1);
+  border: 1px solid rgba(255, 107, 107, 0.3);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+  color: var(--text-primary);
+  text-align: center;
+  box-shadow: 0 4px 20px rgba(255, 107, 107, 0.1);
+}
+
+.error-container p {
+  font-size: 1.05rem;
+  color: var(--accent-tertiary);
+}
+
+/* ─── Misc ─── */
 .spinner {
   width: 50px;
   height: 50px;
@@ -92,25 +206,5 @@
 }
 
 @keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+  to { transform: rotate(360deg); }
 }
-
-.error-container {
-  background: rgba(255, 107, 107, 0.1);
-  border: 1px solid rgba(255, 107, 107, 0.3);
-  backdrop-filter: blur(10px);
-  border-radius: 12px;
-  padding: 20px 24px;
-  margin: 20px 0;
-  color: var(--text-primary);
-  text-align: center;
-  box-shadow: 0 4px 20px rgba(255, 107, 107, 0.1);
-}
-
-.error-container p {
-  font-size: 1.1rem;
-  color: var(--accent-tertiary);
-}
-

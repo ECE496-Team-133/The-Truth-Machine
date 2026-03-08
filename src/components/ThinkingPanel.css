@@ -1,0 +1,191 @@
+/* ── Panel shell ── */
+.thinking-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+}
+
+/* ── Header ── */
+.thinking-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.thinking-panel-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-tertiary);
+}
+
+/* Animated dots */
+.thinking-dots-row {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.thinking-dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent-primary);
+}
+
+/* ── Scrollable log ── */
+.thinking-log {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  max-height: 380px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+
+.thinking-log::-webkit-scrollbar { width: 4px; }
+.thinking-log::-webkit-scrollbar-track { background: transparent; }
+.thinking-log::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 2px; }
+
+/* ── Log line base ── */
+.log-line {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 1px 0;
+  line-height: 1.55;
+}
+
+/* Indentation levels */
+.log-level-0 { padding-left: 0; }
+.log-level-1 { padding-left: 18px; }
+.log-level-2 { padding-left: 36px; }
+
+/* ── Icon column ── */
+.log-icon {
+  flex-shrink: 0;
+  width: 13px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.6;
+}
+
+/* Spinning search icon */
+@keyframes log-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.log-icon-spin {
+  display: inline-block;
+  animation: log-spin 1.1s linear infinite;
+}
+
+/* ── Text column ── */
+.log-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.83rem;
+  color: rgba(255, 255, 255, 0.55);
+  font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+  word-break: break-word;
+}
+
+/* ── Type-specific styles ── */
+
+/* Claim header — bright, bigger */
+.log-claim-header .log-icon { color: var(--accent-primary, #ff9800); font-size: 0.65rem; }
+.log-claim-header .log-text {
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 0.88rem;
+  font-weight: 500;
+  font-style: italic;
+  font-family: inherit;
+}
+
+/* Plan line */
+.log-plan .log-icon { color: rgba(255, 255, 255, 0.3); }
+.log-plan .log-text { color: rgba(255, 255, 255, 0.5); }
+
+/* Section header (e.g. "Running final fact-check") */
+.log-section .log-icon { color: var(--accent-primary, #ff9800); font-size: 0.65rem; }
+.log-section .log-text {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.86rem;
+  font-weight: 500;
+  font-family: inherit;
+}
+
+/* Info lines */
+.log-info .log-icon  { color: rgba(255, 255, 255, 0.2); }
+.log-info .log-text  { color: rgba(255, 255, 255, 0.38); font-size: 0.8rem; }
+
+/* Searching — orange + spinning */
+.log-searching .log-icon { color: #ff9800; }
+.log-searching .log-text { color: rgba(255, 152, 0, 0.75); }
+
+/* Article found — muted green */
+.log-found .log-icon { color: rgba(76, 175, 80, 0.6); }
+.log-found .log-text { color: rgba(255, 255, 255, 0.38); font-size: 0.79rem; }
+
+/* Skipped — dim, strike-through icon */
+.log-skipped .log-icon { color: rgba(255, 255, 255, 0.18); }
+.log-skipped .log-text {
+  color: rgba(255, 255, 255, 0.22);
+  font-size: 0.79rem;
+  text-decoration: line-through;
+  text-decoration-color: rgba(255, 255, 255, 0.15);
+}
+
+/* True result */
+.log-true .log-icon { color: #4caf50; }
+.log-true .log-text { color: #4caf50; font-size: 0.82rem; }
+
+/* False result */
+.log-false .log-icon { color: #f44336; }
+.log-false .log-text { color: #f44336; font-size: 0.82rem; }
+
+/* Verdict lines — larger + pill background */
+.log-verdict-true,
+.log-verdict-false {
+  margin-top: 6px;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.log-verdict-true {
+  background: rgba(76, 175, 80, 0.1);
+  border: 1px solid rgba(76, 175, 80, 0.25);
+}
+.log-verdict-true .log-icon,
+.log-verdict-true .log-text {
+  color: #4caf50;
+  font-size: 0.88rem;
+  font-weight: 600;
+  font-family: inherit;
+}
+
+.log-verdict-false {
+  background: rgba(244, 67, 54, 0.1);
+  border: 1px solid rgba(244, 67, 54, 0.25);
+}
+.log-verdict-false .log-icon,
+.log-verdict-false .log-text {
+  color: #f44336;
+  font-size: 0.88rem;
+  font-weight: 600;
+  font-family: inherit;
+}
+
+/* Divider between claims */
+.log-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.06);
+  margin: 8px 0;
+}

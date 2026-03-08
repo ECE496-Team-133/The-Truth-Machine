@@ -1,189 +1,139 @@
-.query-input-container {
-  margin-bottom: 40px;
-}
-
-.query-input-wrapper {
+.chat-input-form {
   display: flex;
-  gap: 12px;
-  background: var(--glass-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--glass-border);
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+/* The rounded input container */
+.chat-input-box {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 16px;
-  padding: 8px;
-  box-shadow: 
-    0 8px 32px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  transition: all 0.3s ease;
+  padding: 12px 12px 12px 18px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.25);
 }
 
-.query-input-wrapper:focus-within {
-  border-color: rgba(0, 255, 136, 0.5);
-  box-shadow: 
-    0 8px 32px rgba(0, 255, 136, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2),
-    0 0 0 3px rgba(0, 255, 136, 0.1);
+.chat-input-box:focus-within {
+  border-color: rgba(0, 255, 136, 0.4);
+  box-shadow: 0 0 0 3px rgba(0, 255, 136, 0.07), 0 2px 16px rgba(0, 0, 0, 0.3);
 }
 
-.query-input {
+.chat-input-box.is-disabled {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+/* Auto-resizing textarea */
+.chat-textarea {
   flex: 1;
+  background: transparent;
   border: none;
   outline: none;
-  padding: 18px 24px;
-  font-size: 1.1rem;
-  border-radius: 12px;
-  background: transparent;
   color: var(--text-primary);
-  font-weight: 400;
+  font-size: 0.97rem;
+  font-family: inherit;
+  line-height: 1.55;
+  resize: none;
+  overflow-y: auto;
+  min-height: 24px;
+  max-height: 160px;
+  padding: 0;
 }
 
-.query-input::placeholder {
+.chat-textarea::placeholder {
   color: var(--text-tertiary);
 }
 
-.query-input:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.chat-textarea::-webkit-scrollbar {
+  width: 4px;
 }
 
-.query-submit-button {
-  padding: 18px 36px;
-  background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
-  color: var(--bg-primary);
-  border: none;
-  border-radius: 12px;
-  font-size: 1.1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 20px rgba(0, 255, 136, 0.3);
-  position: relative;
-  overflow: hidden;
+.chat-textarea::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
 }
 
-.query-submit-button::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-  transition: left 0.5s;
-}
-
-.query-submit-button:hover:not(:disabled)::before {
-  left: 100%;
-}
-
-.query-submit-button:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 30px rgba(0, 255, 136, 0.4);
-}
-
-.query-submit-button:active:not(:disabled) {
-  transform: translateY(0);
-}
-
-.query-submit-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.query-local-button {
-  background: linear-gradient(135deg, #a855f7 0%, #6366f1 100%);
-  box-shadow: 0 4px 20px rgba(168, 85, 247, 0.3);
-}
-
-.query-local-button:hover:not(:disabled) {
-  box-shadow: 0 6px 30px rgba(168, 85, 247, 0.4);
-}
-
-.query-local-button::before {
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-}
-
-.source-selection {
-  margin-top: 20px;
+/* Action buttons group */
+.chat-input-actions {
   display: flex;
   align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
-  padding: 20px;
-  background: var(--glass-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--glass-border);
-  border-radius: 12px;
-}
-
-.source-label {
-  font-weight: 600;
-  color: var(--text-primary);
-  font-size: 0.95rem;
-  letter-spacing: 0.01em;
-}
-
-.source-checkboxes {
-  display: flex;
-  gap: 24px;
-  flex-wrap: wrap;
-}
-
-.source-checkbox {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  user-select: none;
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-  transition: all 0.2s ease;
-  padding: 6px 12px;
-  border-radius: 8px;
-}
-
-.source-checkbox:hover {
-  color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.source-checkbox input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
-  cursor: pointer;
-  accent-color: var(--accent-primary);
-  filter: drop-shadow(0 0 4px rgba(0, 255, 136, 0.3));
-}
-
-.source-checkbox:has(input:disabled) {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.source-checkbox span {
-  font-weight: 500;
-}
-
-.source-note {
-  margin-top: 16px;
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  font-size: 0.85rem;
-  color: var(--text-tertiary);
-  line-height: 1.5;
-  max-width: 100%;
-  padding: 12px;
-  background: rgba(0, 212, 255, 0.05);
-  border: 1px solid rgba(0, 212, 255, 0.1);
-  border-radius: 8px;
-}
-
-.note-icon {
-  font-size: 1.1rem;
+  gap: 6px;
   flex-shrink: 0;
-  margin-top: 2px;
-  filter: drop-shadow(0 0 6px rgba(0, 212, 255, 0.5));
+}
+
+/* Shared action button base */
+.action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0;
+}
+
+.action-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+/* Local button */
+.local-btn {
+  padding: 7px 12px;
+  background: rgba(168, 85, 247, 0.12);
+  border: 1px solid rgba(168, 85, 247, 0.25);
+  color: #a855f7;
+  height: 34px;
+}
+
+.local-btn:not(:disabled):hover {
+  background: rgba(168, 85, 247, 0.2);
+  border-color: rgba(168, 85, 247, 0.45);
+}
+
+/* Send button — circle */
+.send-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+  transition: all 0.18s ease;
+}
+
+.send-btn.send-ready {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: #0a0a0a;
+  box-shadow: 0 2px 12px rgba(0, 255, 136, 0.35);
+}
+
+.send-btn.send-ready:hover {
+  background: #00e07a;
+  box-shadow: 0 4px 18px rgba(0, 255, 136, 0.5);
+}
+
+/* Hint line below */
+.chat-input-hint {
+  font-size: 0.72rem;
+  color: var(--text-tertiary);
+  text-align: center;
+  margin: 0;
+  opacity: 0.6;
+}
+
+/* Adjustments when in the chat-input-bar (bottom of chat view) */
+.chat-input-bar .chat-input-hint {
+  display: none;
 }
