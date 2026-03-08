@@ -26,6 +26,28 @@ from src.utils.wikipedia_scraper import scrape_wikipedia_content, extract_title_
 from src.utils.factcheck import find_answer_in_article, build_text_fragment_link
 from src.utils.models import AdditionalInfoItem
 from src.utils.news_scrapers import scrape_news_content, build_source_query
+from src.utils.hardware import detect_hardware, hardware_summary
+from src.utils.local_config import load_config, save_config, reset_config, is_local_mode, LocalModeConfig
+from src.utils.local_model_manager import (
+    is_ollama_installed,
+    is_ollama_running,
+    start_ollama,
+    recommend_model,
+    is_model_installed,
+    pull_model,
+    list_installed_models,
+    get_all_model_options,
+    get_ollama_install_instructions,
+)
+from src.utils.openai_client import reset_client
+from src.utils.local_claims import (
+    extract_claims_from_query as local_extract_claims,
+    get_query_for_wiki_article as local_get_query_for_wiki_article,
+)
+from src.utils.local_factcheck_full import (
+    find_answer_in_article as local_find_answer_in_article,
+)
+from src.utils.local_openai_client import get_local_openai_client
 
 
 # Global cache for scraped articles
@@ -36,6 +58,7 @@ class QueryRequest(BaseModel):
     query: str
     top_n_urls: int = 1
     sources: list[str] = ["wikipedia"]  # List of sources: "wikipedia", "ap", "reuters", "guardian"
+    local: bool = False
 
 
 class ValidationStatus(BaseModel):
@@ -869,20 +892,143 @@ async def root():
     return {"message": "The Truth Machine API"}
 
 
-def generate_progress_stream(query: str, top_n_urls: int = 1, sources: list[str] = ["wikipedia"]) -> Generator[str, None, None]:
+# ---------- Local Mode API ----------
+
+
+class LocalSetupRequest(BaseModel):
+    model_tag: str
+    ollama_base_url: str = "http://localhost:11434"
+
+
+@app.get("/api/local/status")
+async def local_status():
+    """Current local-mode status and configuration."""
+    cfg = load_config()
+    ollama_installed = is_ollama_installed()
+    ollama_running = is_ollama_running(cfg.ollama_base_url) if ollama_installed else False
+    model_ready = is_model_installed(cfg.model_tag, cfg.ollama_base_url) if (ollama_running and cfg.model_tag) else False
+
+    return {
+        "local_mode_enabled": cfg.enabled,
+        "setup_completed": cfg.setup_completed,
+        "model_tag": cfg.model_tag,
+        "ollama_base_url": cfg.ollama_base_url,
+        "ollama_installed": ollama_installed,
+        "ollama_running": ollama_running,
+        "model_ready": model_ready,
+        "hardware_summary": cfg.hardware_summary,
+    }
+
+
+@app.get("/api/local/hardware")
+async def local_hardware():
+    """Detect and return current hardware capabilities."""
+    hw = detect_hardware()
+    rec = recommend_model(hw)
+    all_options = get_all_model_options(hw)
+
+    return {
+        "hardware": hw.to_dict(),
+        "hardware_summary": hardware_summary(hw),
+        "recommendation": rec.to_dict(),
+        "all_models": all_options,
+    }
+
+
+@app.get("/api/local/ollama/models")
+async def ollama_models():
+    """List models currently installed in Ollama."""
+    cfg = load_config()
+    if not is_ollama_running(cfg.ollama_base_url):
+        return {"running": False, "models": []}
+    models = list_installed_models(cfg.ollama_base_url)
+    return {"running": True, "models": models}
+
+
+@app.post("/api/local/ollama/start")
+async def ollama_start():
+    """Attempt to start the Ollama server."""
+    if is_ollama_running():
+        return {"success": True, "message": "Ollama is already running"}
+    if not is_ollama_installed():
+        return {
+            "success": False,
+            "message": "Ollama is not installed",
+            "install_instructions": get_ollama_install_instructions(),
+        }
+    success = start_ollama()
+    return {
+        "success": success,
+        "message": "Ollama started" if success else "Failed to start Ollama. Try running 'ollama serve' manually.",
+    }
+
+
+@app.post("/api/local/ollama/pull")
+async def ollama_pull(request: LocalSetupRequest):
+    """Pull (download) a model into Ollama."""
+    base_url = request.ollama_base_url
+    if not is_ollama_running(base_url):
+        raise HTTPException(status_code=503, detail="Ollama is not running")
+
+    success = pull_model(request.model_tag, base_url)
+    return {
+        "success": success,
+        "model_tag": request.model_tag,
+        "message": f"Model '{request.model_tag}' ready" if success else f"Failed to pull '{request.model_tag}'",
+    }
+
+
+@app.post("/api/local/enable")
+async def local_enable(request: LocalSetupRequest):
+    """Enable local mode with the given model."""
+    hw = detect_hardware()
+    cfg = LocalModeConfig(
+        enabled=True,
+        model_tag=request.model_tag,
+        ollama_base_url=request.ollama_base_url,
+        setup_completed=True,
+        hardware_summary=hardware_summary(hw),
+    )
+    save_config(cfg)
+    reset_client()
+    return {"success": True, "config": cfg.to_dict()}
+
+
+@app.post("/api/local/disable")
+async def local_disable():
+    """Switch back to API mode."""
+    cfg = load_config()
+    cfg.enabled = False
+    save_config(cfg)
+    reset_client()
+    return {"success": True, "message": "Switched to API mode"}
+
+
+@app.post("/api/local/reset")
+async def local_reset():
+    """Reset local config entirely."""
+    reset_config()
+    reset_client()
+    return {"success": True, "message": "Local config reset"}
+
+
+def generate_progress_stream(query: str, top_n_urls: int = 1, sources: list[str] = ["wikipedia"], local: bool = False) -> Generator[str, None, None]:
     """Generate a stream of progress updates as JSON strings."""
     start_time = time.time()
     
+    mode_label = "LOCAL" if local else "API"
     print(f"\n{'=' * 60}")
-    print(f"Query: {query}")
+    print(f"Query: {query} [{mode_label}]")
     print(f"{'=' * 60}\n")
+    
+    _extract_claims = local_extract_claims if local else extract_claims_from_query
     
     try:
         # Extract claims from query
         print("Extracting claims from query...")
-        yield f"data: {json.dumps({'type': 'step', 'message': 'Extracting claims from query...', 'data': None})}\n\n"
+        yield f"data: {json.dumps({'type': 'step', 'message': 'Extracting claims from query...', 'data': {'local': local}})}\n\n"
         claims_start = time.time()
-        claims = extract_claims_from_query(query)
+        claims = _extract_claims(query)
         claims_time = time.time() - claims_start
         
         if not claims:
@@ -965,10 +1111,9 @@ def generate_progress_stream(query: str, top_n_urls: int = 1, sources: list[str]
 @app.post("/api/factcheck")
 async def factcheck_query(request: QueryRequest):
     """Process a query and return structured fact-checking results (streaming)."""
-    # Ensure at least one source is selected
     sources = request.sources if request.sources else ["wikipedia"]
     return StreamingResponse(
-        generate_progress_stream(request.query, request.top_n_urls, sources),
+        generate_progress_stream(request.query, request.top_n_urls, sources, local=request.local),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

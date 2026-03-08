@@ -91,6 +91,19 @@
   transform: none;
 }
 
+.query-local-button {
+  background: linear-gradient(135deg, #a855f7 0%, #6366f1 100%);
+  box-shadow: 0 4px 20px rgba(168, 85, 247, 0.3);
+}
+
+.query-local-button:hover:not(:disabled) {
+  box-shadow: 0 6px 30px rgba(168, 85, 247, 0.4);
+}
+
+.query-local-button::before {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+}
+
 .source-selection {
   margin-top: 20px;
   display: flex;

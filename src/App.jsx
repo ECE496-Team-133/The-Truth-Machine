@@ -1,7 +1,9 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import QueryInput from './components/QueryInput'
 import FactCheckTree from './components/FactCheckTree'
 import ProgressDisplay from './components/ProgressDisplay'
+import LocalSetupModal from './components/LocalSetupModal'
+import LocalModeIndicator from './components/LocalModeIndicator'
 import './App.css'
 
 function App() {
@@ -12,6 +14,77 @@ function App() {
   const [currentStep, setCurrentStep] = useState(null)
   const [incrementalData, setIncrementalData] = useState(null)
   const [abortController, setAbortController] = useState(null)
+
+  // Local mode state
+  const [localConfig, setLocalConfig] = useState(null)
+  const [showSetupModal, setShowSetupModal] = useState(false)
+
+  const fetchLocalStatus = useCallback(async () => {
+    try {
+      const res = await fetch('/api/local/status')
+      if (res.ok) {
+        const data = await res.json()
+        const cfg = {
+          enabled: data.local_mode_enabled,
+          model_tag: data.model_tag,
+          setup_completed: data.setup_completed,
+          ollama_running: data.ollama_running,
+          model_ready: data.model_ready,
+        }
+        setLocalConfig(cfg)
+
+        // Auto-open setup wizard if local mode is enabled but not fully ready
+        if (cfg.enabled && (!cfg.ollama_running || !cfg.model_ready)) {
+          setShowSetupModal(true)
+        }
+      }
+    } catch {
+      // API not reachable; leave config as null
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchLocalStatus()
+  }, [fetchLocalStatus])
+
+  const handleSetupComplete = (config) => {
+    if (config) {
+      setLocalConfig({
+        enabled: config.enabled,
+        model_tag: config.model_tag,
+        setup_completed: config.setup_completed,
+        ollama_running: true,
+        model_ready: true,
+      })
+    } else {
+      setLocalConfig(prev => prev ? { ...prev, enabled: false } : null)
+    }
+    setShowSetupModal(false)
+  }
+
+  const handleRunLocally = async (query, sources = ['wikipedia']) => {
+    // Re-check live status before submitting
+    try {
+      const res = await fetch('/api/local/status')
+      if (res.ok) {
+        const data = await res.json()
+        if (!data.local_mode_enabled || !data.ollama_running || !data.model_ready) {
+          setLocalConfig(prev => ({
+            ...prev,
+            enabled: data.local_mode_enabled,
+            ollama_running: data.ollama_running,
+            model_ready: data.model_ready,
+          }))
+          setShowSetupModal(true)
+          return
+        }
+      }
+    } catch {
+      setShowSetupModal(true)
+      return
+    }
+    return handleQuerySubmit(query, sources)
+  }
 
   const handleQuerySubmit = async (query, sources = ['wikipedia']) => {
     // Cancel any existing request
@@ -469,13 +542,19 @@ function App() {
         <header className="app-header">
           <h1>The Truth Machine</h1>
           <p>Fact-check claims against Wikipedia with AI-powered validation</p>
+          <div className="header-mode-indicator">
+            <LocalModeIndicator
+              config={localConfig}
+              onClick={() => setShowSetupModal(true)}
+            />
+          </div>
         </header>
 
-        <QueryInput onSubmit={handleQuerySubmit} disabled={loading} />
+        <QueryInput onSubmit={handleQuerySubmit} onRunLocally={handleRunLocally} disabled={loading} localConfig={localConfig} />
 
         {error && (
           <div className="error-container">
-            <p>❌ Error: {error}</p>
+            <p>Error: {error}</p>
           </div>
         )}
 
@@ -488,6 +567,13 @@ function App() {
           />
         )}
       </div>
+
+      <LocalSetupModal
+        isOpen={showSetupModal}
+        onClose={() => setShowSetupModal(false)}
+        onSetupComplete={handleSetupComplete}
+        currentConfig={localConfig}
+      />
     </div>
   )
 }

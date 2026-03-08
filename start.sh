@@ -39,10 +39,23 @@ trap cleanup SIGINT SIGTERM
 
 echo -e "${BLUE}Starting The Truth Machine...${NC}\n"
 
-# Check and fix Python dependencies
+# ---- Python virtual environment ----
+VENV_DIR="${SCRIPT_DIR}/.venv"
+
+if [ ! -d "$VENV_DIR" ]; then
+    echo -e "${YELLOW}Creating Python virtual environment...${NC}"
+    python3 -m venv "$VENV_DIR" || {
+        echo -e "${RED}Error: Failed to create virtual environment${NC}"
+        exit 1
+    }
+    echo -e "${GREEN}✓ Virtual environment created at .venv${NC}"
+fi
+
+# Activate the venv — all subsequent python3 / pip calls use it
+source "$VENV_DIR/bin/activate"
+
 echo -e "${BLUE}Checking Python dependencies...${NC}"
 
-# Check if uvicorn is installed
 if ! python3 -c "import uvicorn" 2>/dev/null; then
     echo -e "${YELLOW}Installing Python dependencies...${NC}"
     pip install -r requirements.txt || {
@@ -54,11 +67,9 @@ fi
 # Check for pydantic_core architecture mismatch (common on Apple Silicon)
 NEEDS_FIX=false
 if python3 -c "import pydantic" 2>/dev/null; then
-    # Try to import pydantic_core - if it fails, likely architecture issue
     if ! python3 -c "from pydantic_core import __version__" 2>/dev/null 2>&1; then
         NEEDS_FIX=true
     else
-        # Double-check by trying to actually use it
         if ! python3 -c "from pydantic import BaseModel; BaseModel()" 2>/dev/null 2>&1; then
             NEEDS_FIX=true
         fi
@@ -129,7 +140,7 @@ for i in {1..30}; do
             if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
                 echo -e "\n${YELLOW}Backend crashed due to dependency issue. Fixing and retrying...${NC}"
                 pip uninstall -y pydantic-core pydantic pydantic-settings 2>/dev/null || true
-                pip install --no-cache-dir pydantic>=2.8.2 pydantic-settings>=2.4.0
+                pip install --no-cache-dir "pydantic>=2.8.2" "pydantic-settings>=2.4.0"
                 RETRY_COUNT=$((RETRY_COUNT + 1))
                 
                 # Restart backend

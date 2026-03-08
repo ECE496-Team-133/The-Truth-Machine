@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { motion } from 'framer-motion'
 import './QueryInput.css'
 
-function QueryInput({ onSubmit, disabled }) {
+function QueryInput({ onSubmit, onRunLocally, disabled, localConfig }) {
   const [query, setQuery] = useState('')
   const [sources, setSources] = useState({
     wikipedia: true,
@@ -18,21 +18,32 @@ function QueryInput({ onSubmit, disabled }) {
     }))
   }
 
+  const getSelectedSources = () => {
+    return Object.entries(sources)
+      .filter(([_, selected]) => selected)
+      .map(([source, _]) => source)
+  }
+
   const handleSubmit = (e) => {
     e.preventDefault()
     if (query.trim() && !disabled) {
-      // Get list of selected sources
-      const selectedSources = Object.entries(sources)
-        .filter(([_, selected]) => selected)
-        .map(([source, _]) => source)
-      
-      // Ensure at least one source is selected
+      const selectedSources = getSelectedSources()
       if (selectedSources.length === 0) {
         alert('Please select at least one source')
         return
       }
-      
       onSubmit(query.trim(), selectedSources)
+    }
+  }
+
+  const handleRunLocally = () => {
+    if (query.trim() && !disabled) {
+      const selectedSources = getSelectedSources()
+      if (selectedSources.length === 0) {
+        alert('Please select at least one source')
+        return
+      }
+      onRunLocally(query.trim(), selectedSources)
     }
   }
 
@@ -61,6 +72,16 @@ function QueryInput({ onSubmit, disabled }) {
           whileTap={{ scale: 0.95 }}
         >
           {disabled ? 'Checking...' : 'Check'}
+        </motion.button>
+        <motion.button
+          type="button"
+          className="query-submit-button query-local-button"
+          disabled={disabled || !query.trim()}
+          onClick={handleRunLocally}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          {disabled ? 'Checking...' : (localConfig?.enabled && localConfig?.ollama_running) ? 'Run Locally' : 'Set Up Local'}
         </motion.button>
       </div>
       <div className="source-selection">
